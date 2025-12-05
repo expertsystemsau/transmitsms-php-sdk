@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace ExpertSystems\TransmitSms;
 
 use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
+use ExpertSystems\TransmitSms\Requests\GetBalanceRequest;
 use ExpertSystems\TransmitSms\Requests\TransmitSmsRequest;
 use Saloon\Http\Response;
 
@@ -83,6 +84,28 @@ class TransmitSmsClient
     {
         return $this->send($request)->json();
     }
+
+    // =========================================================================
+    // Account Methods
+    // =========================================================================
+
+    /**
+     * Get the account balance.
+     *
+     * Returns the current account balance and currency.
+     *
+     * @return array{balance: float, currency: string, error: array{code: string, description: string}}
+     *
+     * @throws TransmitSmsException
+     */
+    public function getBalance(): array
+    {
+        return $this->sendAndGetJson(new GetBalanceRequest);
+    }
+
+    // =========================================================================
+    // Response Validation
+    // =========================================================================
 
     /**
      * Validate the API response and throw exception if error.
