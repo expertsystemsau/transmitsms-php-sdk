@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace ExpertSystems\TransmitSms;
 
+use ExpertSystems\TransmitSms\Pagination\TransmitSmsPaginator;
 use Saloon\Http\Auth\BasicAuthenticator;
 use Saloon\Http\Connector;
+use Saloon\Http\Request;
+use Saloon\PaginationPlugin\Contracts\HasPagination;
 use Saloon\Traits\Plugins\AcceptsJson;
 
-class TransmitSmsConnector extends Connector
+class TransmitSmsConnector extends Connector implements HasPagination
 {
     use AcceptsJson;
 
@@ -121,5 +124,15 @@ class TransmitSmsConnector extends Connector
         $this->timeout = $timeout;
 
         return $this;
+    }
+
+    /**
+     * Create a paginator for the given request.
+     *
+     * @see https://docs.saloon.dev/installable-plugins/pagination
+     */
+    public function paginate(Request $request): TransmitSmsPaginator
+    {
+        return new TransmitSmsPaginator($this, $request);
     }
 }

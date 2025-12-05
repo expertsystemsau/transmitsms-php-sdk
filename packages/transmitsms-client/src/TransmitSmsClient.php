@@ -7,6 +7,7 @@ namespace ExpertSystems\TransmitSms;
 use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
 use ExpertSystems\TransmitSms\Requests\TransmitSmsRequest;
 use ExpertSystems\TransmitSms\Resources\AccountResource;
+use ExpertSystems\TransmitSms\Resources\SmsResource;
 use Saloon\Http\Response;
 
 class TransmitSmsClient
@@ -71,6 +72,16 @@ class TransmitSmsClient
     public function account(): AccountResource
     {
         return new AccountResource($this->connector);
+    }
+
+    /**
+     * Access SMS-related API operations.
+     *
+     * @see https://developer.transmitsms.com/#sms
+     */
+    public function sms(): SmsResource
+    {
+        return new SmsResource($this->connector);
     }
 
     // =========================================================================
