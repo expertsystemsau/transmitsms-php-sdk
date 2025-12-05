@@ -19,6 +19,21 @@ class TransmitSmsClient
 {
     protected TransmitSmsConnector $connector;
 
+    // Cached resource instances
+    protected ?AccountResource $accountResource = null;
+
+    protected ?SmsResource $smsResource = null;
+
+    protected ?ReportingResource $reportingResource = null;
+
+    protected ?ListsResource $listsResource = null;
+
+    protected ?NumbersResource $numbersResource = null;
+
+    protected ?KeywordsResource $keywordsResource = null;
+
+    protected ?EmailSmsResource $emailSmsResource = null;
+
     /**
      * Create a new TransmitSMS client instance.
      *
@@ -46,12 +61,10 @@ class TransmitSmsClient
      */
     public static function fromConnector(TransmitSmsConnector $connector): self
     {
-        $client = new self(
-            apiKey: $connector->getApiKey(),
-            apiSecret: '',
-            baseUrl: $connector->getBaseUrl(),
-            timeout: $connector->getTimeout(),
-        );
+        // Use reflection to bypass constructor and directly inject the connector
+        $reflection = new \ReflectionClass(self::class);
+        /** @var self $client */
+        $client = $reflection->newInstanceWithoutConstructor();
         $client->connector = $connector;
 
         return $client;
@@ -76,7 +89,7 @@ class TransmitSmsClient
      */
     public function account(): AccountResource
     {
-        return new AccountResource($this->connector);
+        return $this->accountResource ??= new AccountResource($this->connector);
     }
 
     /**
@@ -86,7 +99,7 @@ class TransmitSmsClient
      */
     public function sms(): SmsResource
     {
-        return new SmsResource($this->connector);
+        return $this->smsResource ??= new SmsResource($this->connector);
     }
 
     /**
@@ -96,7 +109,7 @@ class TransmitSmsClient
      */
     public function reporting(): ReportingResource
     {
-        return new ReportingResource($this->connector);
+        return $this->reportingResource ??= new ReportingResource($this->connector);
     }
 
     /**
@@ -106,7 +119,7 @@ class TransmitSmsClient
      */
     public function lists(): ListsResource
     {
-        return new ListsResource($this->connector);
+        return $this->listsResource ??= new ListsResource($this->connector);
     }
 
     /**
@@ -116,7 +129,7 @@ class TransmitSmsClient
      */
     public function numbers(): NumbersResource
     {
-        return new NumbersResource($this->connector);
+        return $this->numbersResource ??= new NumbersResource($this->connector);
     }
 
     /**
@@ -126,7 +139,7 @@ class TransmitSmsClient
      */
     public function keywords(): KeywordsResource
     {
-        return new KeywordsResource($this->connector);
+        return $this->keywordsResource ??= new KeywordsResource($this->connector);
     }
 
     /**
@@ -136,7 +149,7 @@ class TransmitSmsClient
      */
     public function emailSms(): EmailSmsResource
     {
-        return new EmailSmsResource($this->connector);
+        return $this->emailSmsResource ??= new EmailSmsResource($this->connector);
     }
 
     // =========================================================================

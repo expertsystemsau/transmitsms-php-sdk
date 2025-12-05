@@ -136,11 +136,10 @@ class SendSmsRequest extends TransmitSmsRequest
     public function scheduledAt(string|DateTimeInterface $sendAt): self
     {
         if ($sendAt instanceof DateTimeInterface) {
-            // Convert to UTC and format as expected by API
-            $utc = clone $sendAt;
-            if (method_exists($utc, 'setTimezone')) {
-                $utc = $utc->setTimezone(new DateTimeZone('UTC'));
-            }
+            // Create new DateTimeImmutable in UTC from the timestamp
+            $utc = (new \DateTimeImmutable)
+                ->setTimestamp($sendAt->getTimestamp())
+                ->setTimezone(new DateTimeZone('UTC'));
             $this->sendAt = $utc->format('Y-m-d H:i:s');
         } else {
             $this->sendAt = $sendAt;

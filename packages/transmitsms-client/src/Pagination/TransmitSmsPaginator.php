@@ -32,21 +32,18 @@ class TransmitSmsPaginator extends PagedPaginator
     {
         $data = $response->json();
 
-        // If no responses, we're done
+        // If no items in response, we're done
         if (empty($data[$this->itemsKey])) {
             return true;
         }
 
-        // Check if we've retrieved all items
-        $total = $data['total'] ?? 0;
-        $pageCount = $data['page']['count'] ?? 0;
+        // TransmitSMS API returns:
+        // - page.number: current page number (1-indexed)
+        // - page.count: total number of pages
         $pageNumber = $data['page']['number'] ?? 1;
+        $totalPages = $data['page']['count'] ?? 1;
 
-        // Calculate total items retrieved so far
-        // page.count is items on current page, page.number is current page
-        $perPage = $this->perPageLimit ?? $pageCount;
-
-        return ($pageNumber * $perPage) >= $total;
+        return $pageNumber >= $totalPages;
     }
 
     /**
