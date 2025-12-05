@@ -1,12 +1,12 @@
 <?php
 
-namespace VendorName\Skeleton\Commands;
+namespace ExpertSystems\TransmitsmsPhpClient\Commands;
 
 use Illuminate\Console\Command;
 
-class SkeletonCommand extends Command
+class TransmitsmsPhpClientCommand extends Command
 {
-    public $signature = 'skeleton';
+    public $signature = 'transmitsms-php-client';
 
     public $description = 'My command';
 
