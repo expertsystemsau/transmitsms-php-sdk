@@ -19,6 +19,16 @@ class TransmitSmsConnector extends Connector implements HasPagination
 
     public const BASE_URL_MMS = 'https://api.transmitmessage.com';
 
+    /**
+     * Default sender ID (VMN, short code, or alphanumeric).
+     */
+    protected ?string $defaultFrom = null;
+
+    /**
+     * Default country code for formatting local numbers.
+     */
+    protected ?string $defaultCountryCode = null;
+
     public function __construct(
         protected string $apiKey,
         protected string $apiSecret,
@@ -122,6 +132,56 @@ class TransmitSmsConnector extends Connector implements HasPagination
     public function setTimeout(int $timeout): self
     {
         $this->timeout = $timeout;
+
+        return $this;
+    }
+
+    /**
+     * Get the default sender ID.
+     *
+     * This is used as the 'from' value when sending SMS if not overridden.
+     */
+    public function getDefaultFrom(): ?string
+    {
+        return $this->defaultFrom;
+    }
+
+    /**
+     * Set the default sender ID.
+     *
+     * Can be:
+     * - A virtual mobile number (VMN) in international format
+     * - A short code
+     * - An alphanumeric sender (max 11 chars, no spaces)
+     *
+     * @param  string|null  $from  The default sender ID
+     */
+    public function setDefaultFrom(?string $from): self
+    {
+        $this->defaultFrom = $from;
+
+        return $this;
+    }
+
+    /**
+     * Get the default country code.
+     */
+    public function getDefaultCountryCode(): ?string
+    {
+        return $this->defaultCountryCode;
+    }
+
+    /**
+     * Set the default country code for formatting local numbers.
+     *
+     * When set, local numbers will be automatically formatted to
+     * international E.164 format using this country code.
+     *
+     * @param  string|null  $countryCode  2-letter ISO 3166 country code (e.g., 'AU', 'NZ', 'US')
+     */
+    public function setDefaultCountryCode(?string $countryCode): self
+    {
+        $this->defaultCountryCode = $countryCode;
 
         return $this;
     }

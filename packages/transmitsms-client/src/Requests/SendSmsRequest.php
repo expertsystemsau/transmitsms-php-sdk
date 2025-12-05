@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace ExpertSystems\TransmitSms\Requests;
 
+use DateTimeInterface;
+use DateTimeZone;
 use ExpertSystems\TransmitSms\Data\SmsData;
+use ExpertSystems\TransmitSms\Support\PhoneNumber;
 use Saloon\Http\Response;
 
 /**
@@ -39,6 +42,8 @@ class SendSmsRequest extends TransmitSmsRequest
 
     protected ?string $linkHitsCallback = null;
 
+    protected bool $formatNumbers = false;
+
     /**
      * Create a new SendSmsRequest.
      *
@@ -50,6 +55,9 @@ class SendSmsRequest extends TransmitSmsRequest
 
     /**
      * Set the recipient phone number(s).
+     *
+     * Numbers can be in local or international format. If a country code is set,
+     * local numbers will be automatically formatted to international E.164 format.
      *
      * @param  string  $to  Single number or comma-separated numbers (up to 500)
      */
@@ -75,7 +83,14 @@ class SendSmsRequest extends TransmitSmsRequest
     /**
      * Set the sender ID.
      *
-     * @param  string  $from  Virtual number, short code, or alphanumeric sender (max 11 chars)
+     * Can be:
+     * - A virtual mobile number (VMN) in international format
+     * - A short code
+     * - An alphanumeric sender (max 11 chars, no spaces)
+     *
+     * If not set, defaults to the shared Sender ID for the destination country.
+     *
+     * @param  string  $from  Virtual number, short code, or alphanumeric sender
      */
     public function from(string $from): self
     {
@@ -87,6 +102,9 @@ class SendSmsRequest extends TransmitSmsRequest
     /**
      * Set the country code for formatting local numbers.
      *
+     * When set, local numbers (e.g., 0400000000) will be automatically
+     * formatted to international E.164 format (e.g., 61400000000).
+     *
      * @param  string  $countryCode  2-letter ISO 3166 country code (e.g., 'AU', 'NZ', 'US')
      */
     public function countryCode(string $countryCode): self
@@ -97,13 +115,36 @@ class SendSmsRequest extends TransmitSmsRequest
     }
 
     /**
+     * Enable automatic formatting of phone numbers.
+     *
+     * When enabled, the client will format numbers locally before sending.
+     * This is useful when you want to ensure numbers are in E.164 format
+     * without relying on the API's countrycode parameter.
+     */
+    public function formatNumbers(bool $format = true): self
+    {
+        $this->formatNumbers = $format;
+
+        return $this;
+    }
+
+    /**
      * Schedule the message for a specific time.
      *
-     * @param  string  $sendAt  ISO8601 format: YYYY-MM-DD HH:MM:SS (UTC)
+     * @param  string|DateTimeInterface  $sendAt  Date/time string (ISO8601: YYYY-MM-DD HH:MM:SS UTC) or DateTimeInterface
      */
-    public function scheduledAt(string $sendAt): self
+    public function scheduledAt(string|DateTimeInterface $sendAt): self
     {
-        $this->sendAt = $sendAt;
+        if ($sendAt instanceof DateTimeInterface) {
+            // Convert to UTC and format as expected by API
+            $utc = clone $sendAt;
+            if (method_exists($utc, 'setTimezone')) {
+                $utc = $utc->setTimezone(new DateTimeZone('UTC'));
+            }
+            $this->sendAt = $utc->format('Y-m-d H:i:s');
+        } else {
+            $this->sendAt = $sendAt;
+        }
 
         return $this;
     }
@@ -188,6 +229,44 @@ class SendSmsRequest extends TransmitSmsRequest
     }
 
     /**
+     * Get the formatted recipient number(s).
+     *
+     * @return string|null The formatted number(s)
+     */
+    protected function getFormattedTo(): ?string
+    {
+        if ($this->to === null) {
+            return null;
+        }
+
+        // If format numbers is enabled and we have a country code, format locally
+        if ($this->formatNumbers && $this->countryCode !== null) {
+            return PhoneNumber::formatMultiple($this->to, $this->countryCode);
+        }
+
+        return $this->to;
+    }
+
+    /**
+     * Get the formatted sender ID.
+     *
+     * @return string|null The formatted sender ID
+     */
+    protected function getFormattedFrom(): ?string
+    {
+        if ($this->from === null) {
+            return null;
+        }
+
+        // Format sender if it looks like a phone number and we have a country code
+        if ($this->formatNumbers && $this->countryCode !== null) {
+            return PhoneNumber::formatSenderId($this->from, $this->countryCode);
+        }
+
+        return $this->from;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     protected function defaultBody(): array
@@ -196,19 +275,22 @@ class SendSmsRequest extends TransmitSmsRequest
             'message' => $this->message,
         ];
 
-        if ($this->to !== null) {
-            $body['to'] = $this->to;
+        $to = $this->getFormattedTo();
+        if ($to !== null) {
+            $body['to'] = $to;
         }
 
         if ($this->listId !== null) {
             $body['list_id'] = $this->listId;
         }
 
-        if ($this->from !== null) {
-            $body['from'] = $this->from;
+        $from = $this->getFormattedFrom();
+        if ($from !== null) {
+            $body['from'] = $from;
         }
 
-        if ($this->countryCode !== null) {
+        // Only send countrycode if we're not formatting locally
+        if ($this->countryCode !== null && ! $this->formatNumbers) {
             $body['countrycode'] = $this->countryCode;
         }
 
