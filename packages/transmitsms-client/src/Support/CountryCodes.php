@@ -208,4 +208,39 @@ final class CountryCodes
         // Check if it's a country name
         return self::NAMES[$normalized] ?? null;
     }
+
+    /**
+     * Check if a phone number starts with a known country dialing code.
+     *
+     * This checks against all known dialing codes in our mapping,
+     * sorted by length (longest first) to handle codes like '1' vs '61'.
+     *
+     * @param  string  $number  The phone number (digits only, no + prefix)
+     * @return string|null The matched dialing code, or null if none match
+     */
+    public static function matchDialingCode(string $number): ?string
+    {
+        // Get unique dialing codes sorted by length (longest first)
+        // This ensures '61' matches before '6', '44' before '4', etc.
+        $dialingCodes = array_unique(array_values(self::CODES));
+        usort($dialingCodes, fn ($a, $b) => strlen($b) <=> strlen($a));
+
+        foreach ($dialingCodes as $code) {
+            if (str_starts_with($number, $code)) {
+                return $code;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Check if a number starts with any known country dialing code.
+     *
+     * @param  string  $number  The phone number (digits only, no + prefix)
+     */
+    public static function startsWithKnownDialingCode(string $number): bool
+    {
+        return self::matchDialingCode($number) !== null;
+    }
 }

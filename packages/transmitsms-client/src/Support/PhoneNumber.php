@@ -55,7 +55,13 @@ final class PhoneNumber
 
         // Remove single leading zero from local number (common in AU, NZ, UK, etc.)
         // Using preg_replace to only remove ONE leading zero, not all of them
-        $cleaned = preg_replace('/^0/', '', $cleaned) ?? $cleaned;
+        $result = preg_replace('/^0/', '', $cleaned);
+        if ($result === null) {
+            // preg_replace only returns null on regex error, which shouldn't happen
+            // with this simple pattern, but we handle it explicitly for safety
+            throw new InvalidArgumentException("Failed to process phone number: {$number}");
+        }
+        $cleaned = $result;
 
         return $dialingCode.$cleaned;
     }
@@ -149,9 +155,12 @@ final class PhoneNumber
      * Check if a number appears to be in international format.
      *
      * A number is considered international if it:
-     * - Starts with a known country dialing code
-     * - Or starts with + followed by digits
-     * - Or is 10+ digits and doesn't start with 0
+     * - Starts with a known country dialing code (from our supported list)
+     * - AND has a reasonable length (10+ digits total)
+     * - AND doesn't start with 0
+     *
+     * Note: This is a heuristic check against known dialing codes.
+     * Numbers starting with unknown codes may return false even if valid.
      *
      * @param  string  $number  The phone number to check
      */
@@ -159,17 +168,19 @@ final class PhoneNumber
     {
         $cleaned = self::cleanNumber($number);
 
-        // If it starts with 0, it's local format
+        // If it starts with 0, it's definitely local format
         if (str_starts_with($cleaned, '0')) {
             return false;
         }
 
-        // If 10+ digits and doesn't start with 0, assume international
-        if (strlen($cleaned) >= 10 && ctype_digit($cleaned)) {
-            return true;
+        // Must be all digits and have reasonable length
+        if (! ctype_digit($cleaned) || strlen($cleaned) < 10) {
+            return false;
         }
 
-        return false;
+        // Check if it starts with a known country dialing code
+        // This provides stronger validation than just checking digit count
+        return CountryCodes::startsWithKnownDialingCode($cleaned);
     }
 
     /**
@@ -250,11 +261,18 @@ final class PhoneNumber
      *
      * @param  string  $number  The phone number to clean
      * @return string The cleaned number (digits only)
+     *
+     * @throws InvalidArgumentException If the number cannot be processed
      */
     public static function cleanNumber(string $number): string
     {
         // Remove + prefix and all non-digit characters
-        return preg_replace('/[^\d]/', '', $number) ?? $number;
+        $result = preg_replace('/[^\d]/', '', $number);
+        if ($result === null) {
+            throw new InvalidArgumentException("Failed to clean phone number: {$number}");
+        }
+
+        return $result;
     }
 
     /**

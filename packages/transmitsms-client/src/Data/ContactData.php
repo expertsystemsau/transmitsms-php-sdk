@@ -8,11 +8,23 @@ namespace ExpertSystems\TransmitSms\Data;
  * Contact DTO.
  *
  * Returned by get-contact, add-to-list endpoints.
+ *
+ * Default Value Handling:
+ * - mobile: Required - throws exception if missing (API should always provide this)
+ * - firstName, lastName: Empty string if not provided (API may omit these)
+ * - status: Defaults to 'active' (client assumption for backwards compatibility)
+ * - dateAdded: Null if not provided (API omits for some endpoints)
+ * - customFields: Empty array if none defined (API omits empty fields)
  */
 final readonly class ContactData
 {
     /**
-     * @param  array<string, string>  $customFields  Custom field values
+     * @param  string  $mobile  The contact's mobile number (required)
+     * @param  string  $firstName  First name (may be empty if not provided by API)
+     * @param  string  $lastName  Last name (may be empty if not provided by API)
+     * @param  string  $status  Contact status: 'active', 'optout', 'deleted' (defaults to 'active')
+     * @param  string|null  $dateAdded  When the contact was added (ISO 8601 format)
+     * @param  array<string, string>  $customFields  Custom field values (field_1 through field_10)
      */
     public function __construct(
         public string $mobile,

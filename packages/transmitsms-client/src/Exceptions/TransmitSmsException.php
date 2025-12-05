@@ -54,13 +54,24 @@ class TransmitSmsException extends Exception
         $data = $response->json();
         $error = $data['error'] ?? [];
         $errorCode = $error['code'] ?? null;
-        $message = $error['description'] ?? 'Unknown API error';
+        $httpStatus = $response->status();
+
+        // Build informative error message
+        $message = $error['description'] ?? null;
+        if ($message === null) {
+            // Provide more context when API doesn't return a description
+            $message = sprintf(
+                'API request failed with HTTP %d%s',
+                $httpStatus,
+                $errorCode !== null ? " (error code: {$errorCode})" : ''
+            );
+        }
 
         $exceptionClass = self::$errorMap[$errorCode] ?? self::class;
 
         return new $exceptionClass(
             message: $message,
-            code: $response->status(),
+            code: $httpStatus,
             errorCode: $errorCode,
             response: $response
         );
