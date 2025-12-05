@@ -203,24 +203,45 @@ class ListsResource extends Resource
     }
 
     /**
-     * Edit a contact in a list.
+     * Update a contact in a list.
      *
      * @param  int  $listId  The list ID
      * @param  string  $mobile  The mobile number
+     * @param  string|null  $firstName  New first name (optional)
+     * @param  string|null  $lastName  New last name (optional)
      *
      * @throws TransmitSmsException
      */
-    public function editContact(int $listId, string $mobile): EditListMemberRequest
-    {
-        return new EditListMemberRequest($listId, $mobile);
+    public function updateContact(
+        int $listId,
+        string $mobile,
+        ?string $firstName = null,
+        ?string $lastName = null,
+    ): bool {
+        $request = new EditListMemberRequest($listId, $mobile);
+
+        if ($firstName !== null) {
+            $request->firstName($firstName);
+        }
+
+        if ($lastName !== null) {
+            $request->lastName($lastName);
+        }
+
+        $response = $this->connector->send($request);
+        $data = $response->json();
+
+        return ($data['error']['code'] ?? '') === 'SUCCESS';
     }
 
     /**
-     * Edit a contact using a custom request.
+     * Update a contact using a custom request.
+     *
+     * Use this to update custom fields on the contact.
      *
      * @throws TransmitSmsException
      */
-    public function editContactRequest(EditListMemberRequest $request): bool
+    public function updateContactRequest(EditListMemberRequest $request): bool
     {
         $response = $this->connector->send($request);
         $data = $response->json();

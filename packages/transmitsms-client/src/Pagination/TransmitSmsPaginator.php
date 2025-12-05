@@ -58,9 +58,13 @@ class TransmitSmsPaginator extends PagedPaginator
 
     /**
      * Apply pagination parameters to the request.
+     *
+     * Note: PagedPaginator uses 0-indexed pages internally, but TransmitSMS API
+     * uses 1-indexed pages. We add 1 to convert between the two systems.
      */
     protected function applyPagination(Request $request): Request
     {
+        // API uses 1-indexed pages, PagedPaginator internally uses 0-indexed
         $request->query()->add('page', $this->currentPage + 1);
 
         if ($this->perPageLimit !== null) {
