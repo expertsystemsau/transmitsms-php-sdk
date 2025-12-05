@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace ExpertSystems\TransmitSms;
 
 use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
-use ExpertSystems\TransmitSms\Requests\GetBalanceRequest;
 use ExpertSystems\TransmitSms\Requests\TransmitSmsRequest;
+use ExpertSystems\TransmitSms\Resources\AccountResource;
 use Saloon\Http\Response;
 
 class TransmitSmsClient
@@ -59,8 +59,29 @@ class TransmitSmsClient
         return $this->connector;
     }
 
+    // =========================================================================
+    // Resources
+    // =========================================================================
+
+    /**
+     * Access account-related API operations.
+     *
+     * @see https://developer.transmitsms.com/#account
+     */
+    public function account(): AccountResource
+    {
+        return new AccountResource($this->connector);
+    }
+
+    // =========================================================================
+    // Low-Level Request Methods
+    // =========================================================================
+
     /**
      * Send a request and return the response.
+     *
+     * Use this for advanced use cases where you need direct access to the response.
+     * For most cases, prefer using the resource methods (e.g., $client->account()->getBalance()).
      *
      * @throws TransmitSmsException
      */
@@ -76,6 +97,9 @@ class TransmitSmsClient
     /**
      * Send a request and return the JSON data as an array.
      *
+     * Use this for advanced use cases where you need the raw JSON response.
+     * For most cases, prefer using the resource methods which return typed DTOs.
+     *
      * @return array<string, mixed>
      *
      * @throws TransmitSmsException
@@ -83,24 +107,6 @@ class TransmitSmsClient
     public function sendAndGetJson(TransmitSmsRequest $request): array
     {
         return $this->send($request)->json();
-    }
-
-    // =========================================================================
-    // Account Methods
-    // =========================================================================
-
-    /**
-     * Get the account balance.
-     *
-     * Returns the current account balance and currency.
-     *
-     * @return array{balance: float, currency: string, error: array{code: string, description: string}}
-     *
-     * @throws TransmitSmsException
-     */
-    public function getBalance(): array
-    {
-        return $this->sendAndGetJson(new GetBalanceRequest);
     }
 
     // =========================================================================
@@ -126,6 +132,10 @@ class TransmitSmsClient
             throw TransmitSmsException::fromResponse($response);
         }
     }
+
+    // =========================================================================
+    // URL Configuration
+    // =========================================================================
 
     /**
      * Use the SMS base URL.

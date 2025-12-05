@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace ExpertSystems\TransmitSms\Requests;
 
+use ExpertSystems\TransmitSms\Data\BalanceData;
 use Saloon\Enums\Method;
+use Saloon\Http\Response;
 
 /**
  * Get the account balance.
@@ -27,5 +29,15 @@ class GetBalanceRequest extends TransmitSmsRequest
     public function resolveEndpoint(): string
     {
         return $this->formatEndpoint('/get-balance');
+    }
+
+    /**
+     * Create a DTO from the response.
+     *
+     * @see https://docs.saloon.dev/digging-deeper/data-transfer-objects
+     */
+    public function createDtoFromResponse(Response $response): BalanceData
+    {
+        return BalanceData::fromResponse($response->json());
     }
 }
