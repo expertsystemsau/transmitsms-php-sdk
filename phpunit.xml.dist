@@ -25,7 +25,8 @@
     </logging>
     <source>
         <include>
-            <directory suffix=".php">./src</directory>
+            <directory suffix=".php">./packages/transmitsms-client/src</directory>
+            <directory suffix=".php">./packages/transmitsms-laravel/src</directory>
         </include>
     </source>
 </phpunit>
