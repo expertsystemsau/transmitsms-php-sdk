@@ -25,6 +25,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | API Base URL
+    |--------------------------------------------------------------------------
+    |
+    | The base URL for the TransmitSMS API. Use the SMS URL for SMS messages
+    | and the MMS URL for MMS messages.
+    |
+    | Available options:
+    | - https://api.transmitsms.com (SMS - default)
+    | - https://api.transmitmessage.com (MMS)
+    |
+    */
+    'base_url' => env('TRANSMITSMS_BASE_URL', 'https://api.transmitsms.com'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Request Timeout
+    |--------------------------------------------------------------------------
+    |
+    | The timeout for API requests in seconds.
+    |
+    */
+    'timeout' => env('TRANSMITSMS_TIMEOUT', 30),
+
+    /*
+    |--------------------------------------------------------------------------
     | Default Sender ID
     |--------------------------------------------------------------------------
     |

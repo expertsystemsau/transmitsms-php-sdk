@@ -7,6 +7,7 @@ namespace ExpertSystems\TransmitSms\Laravel\Notifications;
 use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
 use ExpertSystems\TransmitSms\TransmitSmsClient;
 use Illuminate\Notifications\Notification;
+use Saloon\Http\Response;
 
 class TransmitSmsChannel
 {
@@ -18,11 +19,10 @@ class TransmitSmsChannel
      * Send the given notification.
      *
      * @param  mixed  $notifiable
-     * @return array<string, mixed>|null
      *
      * @throws TransmitSmsException
      */
-    public function send($notifiable, Notification $notification): ?array
+    public function send($notifiable, Notification $notification): ?Response
     {
         /** @var TransmitSmsMessage|string $message */
         $message = $notification->toTransmitSms($notifiable);
@@ -37,10 +37,15 @@ class TransmitSmsChannel
             return null;
         }
 
-        return $this->client->sendSms(
-            $to,
-            $message->getContent(),
-            $message->getOptions()
+        // TODO: Implement when SendSms request is added
+        // return $this->client->send(new SendSmsRequest(
+        //     to: $to,
+        //     message: $message->getContent(),
+        //     options: $message->getOptions()
+        // ));
+
+        throw new TransmitSmsException(
+            'SendSms request not yet implemented. Please add the SendSms request class.'
         );
     }
 }

@@ -5,185 +5,131 @@ declare(strict_types=1);
 namespace ExpertSystems\TransmitSms;
 
 use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
-use GuzzleHttp\Client;
-use GuzzleHttp\ClientInterface;
-use GuzzleHttp\Exception\GuzzleException;
+use ExpertSystems\TransmitSms\Requests\TransmitSmsRequest;
+use Saloon\Http\Response;
 
 class TransmitSmsClient
 {
-    protected ClientInterface $httpClient;
+    protected TransmitSmsConnector $connector;
 
-    protected string $baseUrl = 'https://api.transmitsms.com/';
-
+    /**
+     * Create a new TransmitSMS client instance.
+     *
+     * @param  string  $apiKey  Your TransmitSMS API key
+     * @param  string  $apiSecret  Your TransmitSMS API secret
+     * @param  string  $baseUrl  The base URL for the API (defaults to SMS API)
+     * @param  int  $timeout  Request timeout in seconds
+     */
     public function __construct(
-        protected string $apiKey,
-        protected string $apiSecret,
-        ?ClientInterface $httpClient = null
+        string $apiKey,
+        string $apiSecret,
+        string $baseUrl = TransmitSmsConnector::BASE_URL_SMS,
+        int $timeout = 30,
     ) {
-        $this->httpClient = $httpClient ?? new Client([
-            'base_uri' => $this->baseUrl,
-            'timeout' => 30,
-        ]);
+        $this->connector = new TransmitSmsConnector(
+            apiKey: $apiKey,
+            apiSecret: $apiSecret,
+            baseUrl: $baseUrl,
+            timeout: $timeout,
+        );
     }
 
     /**
-     * Send an SMS message.
-     *
-     * @param  string|array<string>  $to  Phone number(s) to send to
-     * @param  string  $message  The message content
-     * @param  array<string, mixed>  $options  Additional options (from, send_at, etc.)
-     * @return array<string, mixed>
+     * Create client from an existing connector.
+     */
+    public static function fromConnector(TransmitSmsConnector $connector): self
+    {
+        $client = new self(
+            apiKey: $connector->getApiKey(),
+            apiSecret: '',
+            baseUrl: $connector->getBaseUrl(),
+            timeout: $connector->getTimeout(),
+        );
+        $client->connector = $connector;
+
+        return $client;
+    }
+
+    /**
+     * Get the underlying connector.
+     */
+    public function connector(): TransmitSmsConnector
+    {
+        return $this->connector;
+    }
+
+    /**
+     * Send a request and return the response.
      *
      * @throws TransmitSmsException
      */
-    public function sendSms(string|array $to, string $message, array $options = []): array
+    public function send(TransmitSmsRequest $request): Response
     {
-        $to = is_array($to) ? implode(',', $to) : $to;
+        $response = $this->connector->send($request);
 
-        $params = array_merge([
-            'to' => $to,
-            'message' => $message,
-        ], $options);
+        $this->validateResponse($response);
 
-        return $this->request('send-sms.json', $params);
+        return $response;
     }
 
     /**
-     * Get SMS delivery status/history.
-     *
-     * @param  string  $messageId  The message ID to check
-     * @return array<string, mixed>
-     *
-     * @throws TransmitSmsException
-     */
-    public function getMessageStatus(string $messageId): array
-    {
-        return $this->request('get-message-status.json', [
-            'message_id' => $messageId,
-        ]);
-    }
-
-    /**
-     * Get account balance.
-     *
-     * @return array<string, mixed>
-     *
-     * @throws TransmitSmsException
-     */
-    public function getBalance(): array
-    {
-        return $this->request('get-balance.json');
-    }
-
-    /**
-     * Get SMS replies.
-     *
-     * @param  array<string, mixed>  $options  Filter options
-     * @return array<string, mixed>
-     *
-     * @throws TransmitSmsException
-     */
-    public function getSmsReplies(array $options = []): array
-    {
-        return $this->request('get-sms-replies.json', $options);
-    }
-
-    /**
-     * Get delivery reports.
-     *
-     * @param  array<string, mixed>  $options  Filter options
-     * @return array<string, mixed>
-     *
-     * @throws TransmitSmsException
-     */
-    public function getDeliveryReports(array $options = []): array
-    {
-        return $this->request('get-delivery-reports.json', $options);
-    }
-
-    /**
-     * Add a contact to a list.
-     *
-     * @param  int  $listId  The list ID
-     * @param  string  $mobile  Mobile number
-     * @param  array<string, mixed>  $fields  Additional contact fields
-     * @return array<string, mixed>
-     *
-     * @throws TransmitSmsException
-     */
-    public function addContact(int $listId, string $mobile, array $fields = []): array
-    {
-        return $this->request('add-to-list.json', array_merge([
-            'list_id' => $listId,
-            'msisdn' => $mobile,
-        ], $fields));
-    }
-
-    /**
-     * Get contact lists.
+     * Send a request and return the JSON data as an array.
      *
      * @return array<string, mixed>
      *
      * @throws TransmitSmsException
      */
-    public function getLists(): array
+    public function sendAndGetJson(TransmitSmsRequest $request): array
     {
-        return $this->request('get-lists.json');
+        return $this->send($request)->json();
     }
 
     /**
-     * Make an API request.
-     *
-     * @param  string  $endpoint  The API endpoint
-     * @param  array<string, mixed>  $params  Request parameters
-     * @return array<string, mixed>
+     * Validate the API response and throw exception if error.
      *
      * @throws TransmitSmsException
      */
-    protected function request(string $endpoint, array $params = []): array
+    protected function validateResponse(Response $response): void
     {
-        try {
-            $response = $this->httpClient->request('POST', $endpoint, [
-                'auth' => [$this->apiKey, $this->apiSecret],
-                'form_params' => $params,
-            ]);
+        // Check for HTTP errors (4xx, 5xx)
+        if ($response->failed()) {
+            throw TransmitSmsException::fromResponse($response);
+        }
 
-            /** @var array<string, mixed> $data */
-            $data = json_decode($response->getBody()->getContents(), true);
+        // Check for API-level errors in the response body
+        $data = $response->json();
 
-            if (isset($data['error']) && $data['error']['code'] !== 'SUCCESS') {
-                throw new TransmitSmsException(
-                    $data['error']['description'] ?? 'Unknown API error',
-                    0,
-                    null,
-                    $data['error']['code'] ?? null
-                );
-            }
-
-            return $data;
-        } catch (GuzzleException $e) {
-            throw new TransmitSmsException(
-                'HTTP request failed: '.$e->getMessage(),
-                $e->getCode(),
-                $e
-            );
+        if (isset($data['error']) && ($data['error']['code'] ?? 'SUCCESS') !== 'SUCCESS') {
+            throw TransmitSmsException::fromResponse($response);
         }
     }
 
     /**
-     * Get the HTTP client instance.
+     * Use the SMS base URL.
      */
-    public function getHttpClient(): ClientInterface
+    public function useSmsUrl(): self
     {
-        return $this->httpClient;
+        $this->connector->useSmsUrl();
+
+        return $this;
     }
 
     /**
-     * Set a custom HTTP client.
+     * Use the MMS base URL.
      */
-    public function setHttpClient(ClientInterface $client): self
+    public function useMmsUrl(): self
     {
-        $this->httpClient = $client;
+        $this->connector->useMmsUrl();
+
+        return $this;
+    }
+
+    /**
+     * Set a custom base URL.
+     */
+    public function setBaseUrl(string $baseUrl): self
+    {
+        $this->connector->setBaseUrl($baseUrl);
 
         return $this;
     }
