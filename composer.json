@@ -77,8 +77,7 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "phpstan/extension-installer": true
-        },
-        "github-protocols": ["https"]
+        }
     },
     "extra": {
         "laravel": {

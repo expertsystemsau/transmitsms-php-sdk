@@ -142,10 +142,10 @@ class RateLimitException extends TransmitSmsException
                 return (int) $value;
             }
 
-            // Try to parse as HTTP-date
-            $date = DateTimeImmutable::createFromFormat(DateTimeImmutable::RFC7231, $value);
-            if ($date !== false) {
-                $diff = $date->getTimestamp() - time();
+            // Try to parse as HTTP-date using strtotime for broader format support
+            $timestamp = strtotime($value);
+            if ($timestamp !== false) {
+                $diff = $timestamp - time();
 
                 return max(0, $diff);
             }
@@ -187,7 +187,7 @@ class RateLimitException extends TransmitSmsException
             return null;
         }
 
-        return (new DateTimeImmutable)->setTimestamp($this->rateLimitReset);
+        return new DateTimeImmutable('@'.$this->rateLimitReset);
     }
 
     /**

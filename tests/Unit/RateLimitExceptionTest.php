@@ -41,7 +41,9 @@ describe('RateLimitException', function () {
         });
 
         it('calculates retry-after from reset timestamp when no explicit retry-after', function () {
-            $futureTimestamp = time() + 60; // 60 seconds from now
+            // Use a known future timestamp relative to current time
+            $now = time();
+            $futureTimestamp = $now + 60; // 60 seconds from now
             $exception = new RateLimitException(
                 message: 'Rate limit exceeded',
                 code: 429,
@@ -52,8 +54,9 @@ describe('RateLimitException', function () {
             );
 
             $retryAfter = $exception->getRetryAfter();
-            expect($retryAfter)->toBeGreaterThanOrEqual(59);
-            expect($retryAfter)->toBeLessThanOrEqual(61);
+            // Allow for slight timing variations (test might run a second or two)
+            expect($retryAfter)->toBeGreaterThanOrEqual(58);
+            expect($retryAfter)->toBeLessThanOrEqual(62);
         });
 
         it('returns explicit retry-after over calculated value', function () {
