@@ -11,9 +11,28 @@ updates:
     labels:
       - "dependencies"
 
+  # Root monorepo dependencies (dev tools)
   - package-ecosystem: "composer"
     directory: "/"
     schedule:
       interval: "weekly"
     labels:
       - "dependencies"
+
+  # Core PHP client package
+  - package-ecosystem: "composer"
+    directory: "/packages/transmitsms-client"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "client"
+
+  # Laravel integration package
+  - package-ecosystem: "composer"
+    directory: "/packages/transmitsms-laravel"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "laravel"
