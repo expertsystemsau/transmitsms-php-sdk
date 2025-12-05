@@ -8,6 +8,7 @@ use DateTimeInterface;
 use DateTimeZone;
 use ExpertSystems\TransmitSms\Data\SmsData;
 use ExpertSystems\TransmitSms\Support\PhoneNumber;
+use ExpertSystems\TransmitSms\Support\Url;
 use Saloon\Http\Response;
 
 /**
@@ -164,9 +165,12 @@ class SendSmsRequest extends TransmitSmsRequest
      * Send replies to an email address.
      *
      * @param  string  $email  Email address to receive replies
+     *
+     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the email is invalid
      */
     public function repliesToEmail(string $email): self
     {
+        Url::validateEmail($email, 'replies_to_email');
         $this->repliesToEmail = $email;
 
         return $this;
@@ -178,9 +182,12 @@ class SendSmsRequest extends TransmitSmsRequest
      * Use [tracked-link] in your message to insert the shortened tracking link.
      *
      * @param  string  $url  The URL to convert to a tracking link
+     *
+     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid
      */
     public function trackedLinkUrl(string $url): self
     {
+        Url::validate($url, 'tracked_link_url');
         $this->trackedLinkUrl = $url;
 
         return $this;
@@ -190,9 +197,12 @@ class SendSmsRequest extends TransmitSmsRequest
      * Set the delivery report callback URL.
      *
      * @param  string  $url  URL to receive delivery notifications
+     *
+     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid
      */
     public function dlrCallback(string $url): self
     {
+        Url::validate($url, 'dlr_callback');
         $this->dlrCallback = $url;
 
         return $this;
@@ -202,9 +212,12 @@ class SendSmsRequest extends TransmitSmsRequest
      * Set the reply callback URL.
      *
      * @param  string  $url  URL to receive reply notifications
+     *
+     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid
      */
     public function replyCallback(string $url): self
     {
+        Url::validate($url, 'reply_callback');
         $this->replyCallback = $url;
 
         return $this;
@@ -214,9 +227,12 @@ class SendSmsRequest extends TransmitSmsRequest
      * Set the link hits callback URL.
      *
      * @param  string  $url  URL to receive link click notifications
+     *
+     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid
      */
     public function linkHitsCallback(string $url): self
     {
+        Url::validate($url, 'link_hits_callback');
         $this->linkHitsCallback = $url;
 
         return $this;

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use ExpertSystems\TransmitSms\Exceptions\ValidationException;
 use ExpertSystems\TransmitSms\Requests\SendSmsRequest;
 
 describe('SendSmsRequest', function () {
@@ -114,6 +115,81 @@ describe('SendSmsRequest', function () {
                 ->formatNumbers();
 
             expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
+    });
+
+    describe('URL validation', function () {
+        it('validates trackedLinkUrl accepts valid HTTPS URL', function () {
+            $request = (new SendSmsRequest('Test'))
+                ->trackedLinkUrl('https://example.com/page');
+
+            expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
+
+        it('validates trackedLinkUrl rejects invalid URL', function () {
+            expect(fn () => (new SendSmsRequest('Test'))
+                ->trackedLinkUrl('not-a-url'))
+                ->toThrow(ValidationException::class);
+        });
+
+        it('validates dlrCallback accepts valid URL', function () {
+            $request = (new SendSmsRequest('Test'))
+                ->dlrCallback('https://myapp.com/webhook/dlr');
+
+            expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
+
+        it('validates dlrCallback rejects invalid URL', function () {
+            expect(fn () => (new SendSmsRequest('Test'))
+                ->dlrCallback('ftp://invalid.com'))
+                ->toThrow(ValidationException::class);
+        });
+
+        it('validates replyCallback accepts valid URL', function () {
+            $request = (new SendSmsRequest('Test'))
+                ->replyCallback('https://myapp.com/webhook/reply');
+
+            expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
+
+        it('validates replyCallback rejects invalid URL', function () {
+            expect(fn () => (new SendSmsRequest('Test'))
+                ->replyCallback(''))
+                ->toThrow(ValidationException::class);
+        });
+
+        it('validates linkHitsCallback accepts valid URL', function () {
+            $request = (new SendSmsRequest('Test'))
+                ->linkHitsCallback('https://myapp.com/webhook/clicks');
+
+            expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
+
+        it('validates linkHitsCallback rejects invalid URL', function () {
+            expect(fn () => (new SendSmsRequest('Test'))
+                ->linkHitsCallback('javascript:alert(1)'))
+                ->toThrow(ValidationException::class);
+        });
+    });
+
+    describe('email validation', function () {
+        it('validates repliesToEmail accepts valid email', function () {
+            $request = (new SendSmsRequest('Test'))
+                ->repliesToEmail('test@example.com');
+
+            expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
+
+        it('validates repliesToEmail rejects invalid email', function () {
+            expect(fn () => (new SendSmsRequest('Test'))
+                ->repliesToEmail('not-an-email'))
+                ->toThrow(ValidationException::class);
+        });
+
+        it('validates repliesToEmail rejects empty email', function () {
+            expect(fn () => (new SendSmsRequest('Test'))
+                ->repliesToEmail(''))
+                ->toThrow(ValidationException::class);
         });
     });
 });
