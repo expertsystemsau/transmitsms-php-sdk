@@ -2,9 +2,9 @@
 
 namespace ExpertSystems\TransmitsmsPhpClient;
 
+use ExpertSystems\TransmitsmsPhpClient\Commands\TransmitsmsPhpClientCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use ExpertSystems\TransmitsmsPhpClient\Commands\TransmitsmsPhpClientCommand;
 
 class TransmitsmsPhpClientServiceProvider extends PackageServiceProvider
 {

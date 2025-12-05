@@ -2,9 +2,9 @@
 
 namespace ExpertSystems\TransmitsmsPhpClient\Tests;
 
+use ExpertSystems\TransmitsmsPhpClient\TransmitsmsPhpClientServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use ExpertSystems\TransmitsmsPhpClient\TransmitsmsPhpClientServiceProvider;
 
 class TestCase extends Orchestra
 {
