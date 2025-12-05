@@ -7,6 +7,11 @@ namespace ExpertSystems\TransmitSms;
 use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
 use ExpertSystems\TransmitSms\Requests\TransmitSmsRequest;
 use ExpertSystems\TransmitSms\Resources\AccountResource;
+use ExpertSystems\TransmitSms\Resources\EmailSmsResource;
+use ExpertSystems\TransmitSms\Resources\KeywordsResource;
+use ExpertSystems\TransmitSms\Resources\ListsResource;
+use ExpertSystems\TransmitSms\Resources\NumbersResource;
+use ExpertSystems\TransmitSms\Resources\ReportingResource;
 use ExpertSystems\TransmitSms\Resources\SmsResource;
 use Saloon\Http\Response;
 
@@ -82,6 +87,56 @@ class TransmitSmsClient
     public function sms(): SmsResource
     {
         return new SmsResource($this->connector);
+    }
+
+    /**
+     * Access reporting and statistics API operations.
+     *
+     * @see https://developer.transmitsms.com/#sms
+     */
+    public function reporting(): ReportingResource
+    {
+        return new ReportingResource($this->connector);
+    }
+
+    /**
+     * Access contact lists API operations.
+     *
+     * @see https://developer.transmitsms.com/#lists
+     */
+    public function lists(): ListsResource
+    {
+        return new ListsResource($this->connector);
+    }
+
+    /**
+     * Access virtual numbers API operations.
+     *
+     * @see https://developer.transmitsms.com/#numbers
+     */
+    public function numbers(): NumbersResource
+    {
+        return new NumbersResource($this->connector);
+    }
+
+    /**
+     * Access keywords API operations.
+     *
+     * @see https://developer.transmitsms.com/#keywords
+     */
+    public function keywords(): KeywordsResource
+    {
+        return new KeywordsResource($this->connector);
+    }
+
+    /**
+     * Access email SMS API operations.
+     *
+     * @see https://developer.transmitsms.com/#email-sms
+     */
+    public function emailSms(): EmailSmsResource
+    {
+        return new EmailSmsResource($this->connector);
     }
 
     // =========================================================================
