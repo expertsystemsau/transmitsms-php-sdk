@@ -1,9 +1,8 @@
 <?php
 
-namespace ExpertSystems\TransmitsmsPhpClient\Tests;
+namespace ExpertSystems\TransmitSms\Tests;
 
-use ExpertSystems\TransmitsmsPhpClient\TransmitsmsPhpClientServiceProvider;
-use Illuminate\Database\Eloquent\Factories\Factory;
+use ExpertSystems\TransmitSms\Laravel\TransmitSmsServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 class TestCase extends Orchestra
@@ -11,27 +10,19 @@ class TestCase extends Orchestra
     protected function setUp(): void
     {
         parent::setUp();
-
-        Factory::guessFactoryNamesUsing(
-            fn (string $modelName) => 'ExpertSystems\\TransmitsmsPhpClient\\Database\\Factories\\'.class_basename($modelName).'Factory'
-        );
     }
 
     protected function getPackageProviders($app)
     {
         return [
-            TransmitsmsPhpClientServiceProvider::class,
+            TransmitSmsServiceProvider::class,
         ];
     }
 
     public function getEnvironmentSetUp($app)
     {
         config()->set('database.default', 'testing');
-
-        /*
-         foreach (\Illuminate\Support\Facades\File::allFiles(__DIR__ . '/../database/migrations') as $migration) {
-            (include $migration->getRealPath())->up();
-         }
-         */
+        config()->set('transmitsms.api_key', 'test-api-key');
+        config()->set('transmitsms.api_secret', 'test-api-secret');
     }
 }

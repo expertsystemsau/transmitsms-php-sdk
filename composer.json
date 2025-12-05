@@ -1,10 +1,12 @@
 {
-    "name": "expertsystemsau/transmitsms-php-client",
-    "description": "Transmit SMS PHP Client",
+    "name": "expertsystemsau/transmitsms-monorepo",
+    "description": "TransmitSMS PHP Client Monorepo - Contains both the core PHP client and Laravel integration",
     "keywords": [
         "ExpertSystems",
+        "transmitsms",
+        "sms",
         "laravel",
-        "transmitsms-php-client"
+        "api-client"
     ],
     "homepage": "https://github.com/expertsystemsau/transmitsms-php-client",
     "license": "MIT",
@@ -16,9 +18,7 @@
         }
     ],
     "require": {
-        "php": "^8.4",
-        "spatie/laravel-package-tools": "^1.16",
-        "illuminate/contracts": "^11.0||^12.0"
+        "php": "^8.2"
     },
     "require-dev": {
         "laravel/pint": "^1.14",
@@ -30,17 +30,34 @@
         "pestphp/pest-plugin-laravel": "^4.0",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan-deprecation-rules": "^2.0",
-        "phpstan/phpstan-phpunit": "^2.0"
+        "phpstan/phpstan-phpunit": "^2.0",
+        "mockery/mockery": "^1.6"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "packages/transmitsms-client",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "packages/transmitsms-laravel",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
     "autoload": {
         "psr-4": {
-            "ExpertSystems\\TransmitsmsPhpClient\\": "src/",
-            "ExpertSystems\\TransmitsmsPhpClient\\Database\\Factories\\": "database/factories/"
+            "ExpertSystems\\TransmitSms\\": "packages/transmitsms-client/src/",
+            "ExpertSystems\\TransmitSms\\Laravel\\": "packages/transmitsms-laravel/src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "ExpertSystems\\TransmitsmsPhpClient\\Tests\\": "tests/",
+            "ExpertSystems\\TransmitSms\\Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/"
         }
     },
@@ -62,10 +79,10 @@
     "extra": {
         "laravel": {
             "providers": [
-                "ExpertSystems\\TransmitsmsPhpClient\\TransmitsmsPhpClientServiceProvider"
+                "ExpertSystems\\TransmitSms\\Laravel\\TransmitSmsServiceProvider"
             ],
             "aliases": {
-                "TransmitsmsPhpClient": "ExpertSystems\\TransmitsmsPhpClient\\Facades\\TransmitsmsPhpClient"
+                "TransmitSms": "ExpertSystems\\TransmitSms\\Laravel\\Facades\\TransmitSms"
             }
         }
     },

@@ -4,9 +4,9 @@ includes:
 parameters:
     level: 5
     paths:
-        - src
-        - config
-        - database
+        - packages/transmitsms-client/src
+        - packages/transmitsms-laravel/src
+        - packages/transmitsms-laravel/config
     tmpDir: build/phpstan
     checkOctaneCompatibility: true
     checkModelProperties: true

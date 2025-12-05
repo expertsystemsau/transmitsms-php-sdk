@@ -1,59 +1,171 @@
-# Transmit SMS PHP Client
+# TransmitSMS PHP Client
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-client)
 [![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/expertsystemsau/transmitsms-php-client/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/expertsystemsau/transmitsms-php-client/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/expertsystemsau/transmitsms-php-client/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/expertsystemsau/transmitsms-php-client/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
+[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-client)
 
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
+A PHP client for the [TransmitSMS API](https://transmitsms.com/). This monorepo contains two packages:
 
-## Support us
-
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/transmitsms-php-client.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/transmitsms-php-client)
-
-We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
-
-We highly appreciate you sending us a postcard from your hometown, mentioning which of our package(s) you are using. You'll find our address on [our contact page](https://spatie.be/about-us). We publish all received postcards on [our virtual postcard wall](https://spatie.be/open-source/postcards).
+- **`expertsystemsau/transmitsms-client`** - Framework-agnostic PHP client
+- **`expertsystemsau/transmitsms-laravel`** - Laravel notification channel integration
 
 ## Installation
 
-You can install the package via composer:
+### For Plain PHP Projects
+
+Install the core client package:
 
 ```bash
-composer require expertsystemsau/transmitsms-php-client
+composer require expertsystemsau/transmitsms-client
 ```
 
-You can publish and run the migrations with:
+### For Laravel Projects
+
+Install the Laravel integration package (includes the core client):
 
 ```bash
-php artisan vendor:publish --tag="transmitsms-php-client-migrations"
-php artisan migrate
+composer require expertsystemsau/transmitsms-laravel
 ```
 
-You can publish the config file with:
+Then publish the configuration file:
 
 ```bash
-php artisan vendor:publish --tag="transmitsms-php-client-config"
+php artisan vendor:publish --tag="transmitsms-config"
 ```
 
-This is the contents of the published config file:
+## Configuration
+
+### Plain PHP
 
 ```php
-return [
-];
+use ExpertSystems\TransmitSms\TransmitSmsClient;
+
+$client = new TransmitSmsClient(
+    apiKey: 'your-api-key',
+    apiSecret: 'your-api-secret'
+);
 ```
 
-Optionally, you can publish the views using
+### Laravel
 
-```bash
-php artisan vendor:publish --tag="transmitsms-php-client-views"
+Add your credentials to your `.env` file:
+
+```env
+TRANSMITSMS_API_KEY=your-api-key
+TRANSMITSMS_API_SECRET=your-api-secret
+TRANSMITSMS_FROM=YourSenderID
 ```
 
 ## Usage
 
+### Core Client (Plain PHP)
+
 ```php
-$transmitsmsPhpClient = new ExpertSystems\TransmitsmsPhpClient();
-echo $transmitsmsPhpClient->echoPhrase('Hello, ExpertSystems!');
+use ExpertSystems\TransmitSms\TransmitSmsClient;
+
+$client = new TransmitSmsClient('api-key', 'api-secret');
+
+// Send an SMS
+$response = $client->sendSms('+61400000000', 'Hello from TransmitSMS!');
+
+// Send to multiple recipients
+$response = $client->sendSms(['+61400000000', '+61400000001'], 'Bulk message');
+
+// Send with options
+$response = $client->sendSms('+61400000000', 'Scheduled message', [
+    'from' => 'MySenderID',
+    'send_at' => '2024-12-25 09:00:00',
+]);
+
+// Check message status
+$status = $client->getMessageStatus('message-id');
+
+// Get account balance
+$balance = $client->getBalance();
+
+// Get SMS replies
+$replies = $client->getSmsReplies();
+
+// Get delivery reports
+$reports = $client->getDeliveryReports();
+```
+
+### Laravel Facade
+
+```php
+use ExpertSystems\TransmitSms\Laravel\Facades\TransmitSms;
+
+// Send an SMS
+TransmitSms::sendSms('+61400000000', 'Hello from Laravel!');
+
+// Get account balance
+$balance = TransmitSms::getBalance();
+```
+
+### Laravel Notifications
+
+Create a notification that uses the TransmitSMS channel:
+
+```php
+use Illuminate\Notifications\Notification;
+use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsMessage;
+
+class OrderShipped extends Notification
+{
+    public function via($notifiable): array
+    {
+        return ['transmitsms'];
+    }
+
+    public function toTransmitSms($notifiable): TransmitSmsMessage
+    {
+        return (new TransmitSmsMessage())
+            ->content('Your order has been shipped!')
+            ->from('MyStore');
+    }
+}
+```
+
+Add the `routeNotificationForTransmitsms` method to your notifiable model:
+
+```php
+class User extends Authenticatable
+{
+    use Notifiable;
+
+    public function routeNotificationForTransmitsms($notification): ?string
+    {
+        return $this->phone_number;
+    }
+}
+```
+
+Then send notifications:
+
+```php
+$user->notify(new OrderShipped());
+```
+
+## Package Structure
+
+```
+packages/
+├── transmitsms-client/     # Core PHP client (no framework dependencies)
+│   └── src/
+│       ├── TransmitSmsClient.php
+│       └── Exceptions/
+│           └── TransmitSmsException.php
+│
+└── transmitsms-laravel/    # Laravel integration
+    ├── src/
+    │   ├── TransmitSmsServiceProvider.php
+    │   ├── Facades/
+    │   │   └── TransmitSms.php
+    │   └── Notifications/
+    │       ├── TransmitSmsChannel.php
+    │       └── TransmitSmsMessage.php
+    └── config/
+        └── transmitsms.php
 ```
 
 ## Testing
