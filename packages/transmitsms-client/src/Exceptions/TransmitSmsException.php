@@ -48,6 +48,7 @@ class TransmitSmsException extends Exception
      * Create an exception from a Saloon response.
      *
      * Returns a specific exception type based on the error code.
+     * For rate limit exceptions, extracts rate limit metadata from headers.
      */
     public static function fromResponse(Response $response): self
     {
@@ -68,6 +69,12 @@ class TransmitSmsException extends Exception
         }
 
         $exceptionClass = self::$errorMap[$errorCode] ?? self::class;
+
+        // For rate limit exceptions, use the specialized factory method
+        // to extract rate limit metadata from headers
+        if ($exceptionClass === RateLimitException::class) {
+            return RateLimitException::fromResponse($response, $message, $errorCode);
+        }
 
         return new $exceptionClass(
             message: $message,
