@@ -139,4 +139,138 @@ describe('Url validation', function () {
             expect(Url::isValidEmail('not-an-email'))->toBeFalse();
         });
     });
+
+    describe('validateCallbackUrl() - SSRF protection', function () {
+        it('accepts valid external HTTPS URL', function () {
+            expect(fn () => Url::validateCallbackUrl('https://example.com/webhook'))->not->toThrow(ValidationException::class);
+        });
+
+        it('accepts valid external HTTP URL', function () {
+            expect(fn () => Url::validateCallbackUrl('http://api.example.com/callback'))->not->toThrow(ValidationException::class);
+        });
+
+        it('rejects localhost URL', function () {
+            expect(fn () => Url::validateCallbackUrl('http://localhost/callback'))
+                ->toThrow(ValidationException::class, 'must not point to internal or private resources');
+        });
+
+        it('rejects localhost with port', function () {
+            expect(fn () => Url::validateCallbackUrl('http://localhost:8080/callback'))
+                ->toThrow(ValidationException::class, 'must not point to internal or private resources');
+        });
+
+        it('rejects 127.0.0.1 loopback', function () {
+            expect(fn () => Url::validateCallbackUrl('http://127.0.0.1/callback'))
+                ->toThrow(ValidationException::class, 'must not point to internal or private resources');
+        });
+
+        it('rejects other 127.x.x.x loopback addresses', function () {
+            expect(fn () => Url::validateCallbackUrl('http://127.0.0.2/callback'))
+                ->toThrow(ValidationException::class, 'must not point to internal or private resources');
+        });
+
+        it('rejects 10.x.x.x private range', function () {
+            expect(fn () => Url::validateCallbackUrl('http://10.0.0.1/callback'))
+                ->toThrow(ValidationException::class, 'must not point to internal or private resources');
+        });
+
+        it('rejects 172.16.x.x private range', function () {
+            expect(fn () => Url::validateCallbackUrl('http://172.16.0.1/callback'))
+                ->toThrow(ValidationException::class, 'must not point to internal or private resources');
+        });
+
+        it('rejects 172.31.x.x private range', function () {
+            expect(fn () => Url::validateCallbackUrl('http://172.31.255.255/callback'))
+                ->toThrow(ValidationException::class, 'must not point to internal or private resources');
+        });
+
+        it('accepts 172.32.x.x (outside private range)', function () {
+            expect(fn () => Url::validateCallbackUrl('http://172.32.0.1/callback'))->not->toThrow(ValidationException::class);
+        });
+
+        it('rejects 192.168.x.x private range', function () {
+            expect(fn () => Url::validateCallbackUrl('http://192.168.1.1/callback'))
+                ->toThrow(ValidationException::class, 'must not point to internal or private resources');
+        });
+
+        it('rejects AWS metadata endpoint (169.254.169.254)', function () {
+            expect(fn () => Url::validateCallbackUrl('http://169.254.169.254/latest/meta-data/'))
+                ->toThrow(ValidationException::class, 'must not point to internal or private resources');
+        });
+
+        it('rejects link-local range', function () {
+            expect(fn () => Url::validateCallbackUrl('http://169.254.1.1/callback'))
+                ->toThrow(ValidationException::class, 'must not point to internal or private resources');
+        });
+
+        it('rejects 0.0.0.0', function () {
+            expect(fn () => Url::validateCallbackUrl('http://0.0.0.0/callback'))
+                ->toThrow(ValidationException::class, 'must not point to internal or private resources');
+        });
+
+        it('includes custom field name in error message', function () {
+            expect(fn () => Url::validateCallbackUrl('http://localhost/webhook', 'dlr_callback'))
+                ->toThrow(ValidationException::class, 'dlr_callback');
+        });
+
+        it('sets error code to FIELD_UNSAFE for internal URLs', function () {
+            try {
+                Url::validateCallbackUrl('http://localhost/callback');
+            } catch (ValidationException $e) {
+                expect($e->getErrorCode())->toBe('FIELD_UNSAFE');
+            }
+        });
+
+        it('rejects empty URL', function () {
+            expect(fn () => Url::validateCallbackUrl(''))
+                ->toThrow(ValidationException::class, 'cannot be empty');
+        });
+
+        it('rejects invalid URL format', function () {
+            expect(fn () => Url::validateCallbackUrl('not-a-url'))
+                ->toThrow(ValidationException::class, 'not a valid URL');
+        });
+    });
+
+    describe('isCallbackUrlSafe()', function () {
+        it('returns true for valid external URL', function () {
+            expect(Url::isCallbackUrlSafe('https://example.com/webhook'))->toBeTrue();
+        });
+
+        it('returns false for localhost', function () {
+            expect(Url::isCallbackUrlSafe('http://localhost/callback'))->toBeFalse();
+        });
+
+        it('returns false for 127.0.0.1', function () {
+            expect(Url::isCallbackUrlSafe('http://127.0.0.1/callback'))->toBeFalse();
+        });
+
+        it('returns false for private 10.x.x.x range', function () {
+            expect(Url::isCallbackUrlSafe('http://10.0.0.1/callback'))->toBeFalse();
+        });
+
+        it('returns false for private 192.168.x.x range', function () {
+            expect(Url::isCallbackUrlSafe('http://192.168.1.1/callback'))->toBeFalse();
+        });
+
+        it('returns false for AWS metadata endpoint', function () {
+            expect(Url::isCallbackUrlSafe('http://169.254.169.254/metadata'))->toBeFalse();
+        });
+
+        it('returns false for empty string', function () {
+            expect(Url::isCallbackUrlSafe(''))->toBeFalse();
+        });
+
+        it('returns false for invalid URL', function () {
+            expect(Url::isCallbackUrlSafe('not-a-url'))->toBeFalse();
+        });
+
+        it('returns true for public IP addresses', function () {
+            expect(Url::isCallbackUrlSafe('http://8.8.8.8/callback'))->toBeTrue();
+        });
+
+        it('returns false for IPv6 loopback ::1', function () {
+            expect(Url::isCallbackUrlSafe('http://[::1]/callback'))->toBeFalse();
+        });
+    });
 });

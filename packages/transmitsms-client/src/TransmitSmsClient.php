@@ -19,7 +19,14 @@ class TransmitSmsClient
 {
     protected TransmitSmsConnector $connector;
 
-    // Cached resource instances
+    /**
+     * Cached resource instances.
+     *
+     * Note: This client is NOT thread-safe. In async/parallel PHP environments
+     * (e.g., Swoole, ReactPHP, parallel extension), each concurrent context
+     * should use its own client instance to avoid race conditions with the
+     * resource caching using the ??= operator.
+     */
     protected ?AccountResource $accountResource = null;
 
     protected ?SmsResource $smsResource = null;
@@ -64,6 +71,14 @@ class TransmitSmsClient
      *
      * This is useful when you need to share a connector between multiple
      * clients or when using a pre-configured connector from a service container.
+     *
+     * Note: The connector should be properly configured with valid credentials
+     * before being passed to this method. No validation is performed on the
+     * connector's configuration (API key, secret, etc.). Invalid or empty
+     * credentials will result in authentication failures when making requests.
+     *
+     * @param  TransmitSmsConnector  $connector  A pre-configured connector instance
+     * @return self A new client using the provided connector
      */
     public static function fromConnector(TransmitSmsConnector $connector): self
     {
