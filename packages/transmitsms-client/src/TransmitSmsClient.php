@@ -37,6 +37,9 @@ class TransmitSmsClient
     /**
      * Create a new TransmitSMS client instance.
      *
+     * For most use cases, use the standard constructor with API credentials.
+     * To create a client from an existing connector, use fromConnector().
+     *
      * @param  string  $apiKey  Your TransmitSMS API key
      * @param  string  $apiSecret  Your TransmitSMS API secret
      * @param  string  $baseUrl  The base URL for the API (defaults to SMS API)
@@ -58,13 +61,23 @@ class TransmitSmsClient
 
     /**
      * Create client from an existing connector.
+     *
+     * This is useful when you need to share a connector between multiple
+     * clients or when using a pre-configured connector from a service container.
      */
     public static function fromConnector(TransmitSmsConnector $connector): self
     {
-        // Use reflection to bypass constructor and directly inject the connector
-        $reflection = new \ReflectionClass(self::class);
-        /** @var self $client */
-        $client = $reflection->newInstanceWithoutConstructor();
+        // Create a new instance using the connector's credentials
+        // The connector stores these values, so we extract them for proper initialization
+        $client = new self(
+            apiKey: $connector->getApiKey(),
+            apiSecret: $connector->getApiSecret(),
+            baseUrl: $connector->resolveBaseUrl(),
+            timeout: $connector->getTimeout(),
+        );
+
+        // Replace the newly created connector with the provided one
+        // to preserve any custom configuration or middleware
         $client->connector = $connector;
 
         return $client;

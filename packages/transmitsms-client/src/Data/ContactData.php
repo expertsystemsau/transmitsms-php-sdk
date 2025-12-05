@@ -25,10 +25,20 @@ final readonly class ContactData
 
     /**
      * @param  array<string, mixed>  $data
+     *
+     * @throws \InvalidArgumentException If mobile number is missing or empty
      */
     public static function fromResponse(array $data): self
     {
         $contact = $data['contact'] ?? $data;
+
+        // Validate mobile number - it's required for a contact
+        $mobile = $contact['mobile'] ?? $contact['msisdn'] ?? null;
+        if ($mobile === null || $mobile === '') {
+            throw new \InvalidArgumentException(
+                'Contact must have a valid mobile number (mobile or msisdn field)'
+            );
+        }
 
         // Extract custom fields
         $customFields = [];
@@ -40,7 +50,7 @@ final readonly class ContactData
         }
 
         return new self(
-            mobile: (string) ($contact['mobile'] ?? $contact['msisdn'] ?? ''),
+            mobile: (string) $mobile,
             firstName: (string) ($contact['firstname'] ?? ''),
             lastName: (string) ($contact['lastname'] ?? ''),
             status: (string) ($contact['status'] ?? 'active'),

@@ -7,6 +7,7 @@ namespace ExpertSystems\TransmitSms\Requests;
 use DateTimeInterface;
 use DateTimeZone;
 use ExpertSystems\TransmitSms\Data\SmsData;
+use ExpertSystems\TransmitSms\Exceptions\ValidationException;
 use ExpertSystems\TransmitSms\Support\PhoneNumber;
 use ExpertSystems\TransmitSms\Support\Url;
 use Saloon\Http\Response;
@@ -59,10 +60,23 @@ class SendSmsRequest extends TransmitSmsRequest
      * Create a new SendSmsRequest.
      *
      * @param  string  $message  The message content (up to 612 characters)
+     *
+     * @throws ValidationException If the message exceeds the maximum length
      */
     public function __construct(
         protected string $message,
-    ) {}
+    ) {
+        if (mb_strlen($message) > self::MAX_MESSAGE_LENGTH) {
+            throw new ValidationException(
+                message: sprintf(
+                    'Message length (%d chars) exceeds maximum of %d characters',
+                    mb_strlen($message),
+                    self::MAX_MESSAGE_LENGTH
+                ),
+                errorCode: 'FIELD_INVALID'
+            );
+        }
+    }
 
     /**
      * Set the recipient phone number(s).
@@ -71,9 +85,23 @@ class SendSmsRequest extends TransmitSmsRequest
      * local numbers will be automatically formatted to international E.164 format.
      *
      * @param  string  $to  Single number or comma-separated numbers (up to 500)
+     *
+     * @throws ValidationException If more than 500 recipients are provided
      */
     public function to(string $to): self
     {
+        $recipientCount = PhoneNumber::countRecipients($to);
+        if ($recipientCount > PhoneNumber::MAX_RECIPIENTS) {
+            throw new ValidationException(
+                message: sprintf(
+                    'Recipient count (%d) exceeds maximum of %d recipients per request',
+                    $recipientCount,
+                    PhoneNumber::MAX_RECIPIENTS
+                ),
+                errorCode: 'FIELD_INVALID'
+            );
+        }
+
         $this->to = $to;
 
         return $this;
@@ -143,6 +171,8 @@ class SendSmsRequest extends TransmitSmsRequest
      * Schedule the message for a specific time.
      *
      * @param  string|DateTimeInterface  $sendAt  Date/time string (ISO8601: YYYY-MM-DD HH:MM:SS UTC) or DateTimeInterface
+     *
+     * @throws ValidationException If the datetime cannot be converted
      */
     public function scheduledAt(string|DateTimeInterface $sendAt): self
     {
@@ -154,7 +184,15 @@ class SendSmsRequest extends TransmitSmsRequest
                 (string) $sendAt->getTimestamp(),
                 new DateTimeZone('UTC')
             );
-            $this->sendAt = $utc !== false ? $utc->format('Y-m-d H:i:s') : null;
+
+            if ($utc === false) {
+                throw new ValidationException(
+                    message: 'Failed to convert datetime to UTC format',
+                    errorCode: 'FIELD_INVALID'
+                );
+            }
+
+            $this->sendAt = $utc->format('Y-m-d H:i:s');
         } else {
             $this->sendAt = $sendAt;
         }
@@ -165,10 +203,30 @@ class SendSmsRequest extends TransmitSmsRequest
     /**
      * Set the message validity period.
      *
-     * @param  int  $minutes  Maximum time to attempt delivery (0 = maximum period)
+     * @param  int  $minutes  Maximum time to attempt delivery (0 = maximum period, max 4320 = 72 hours)
+     *
+     * @throws ValidationException If validity exceeds the maximum period
      */
     public function validity(int $minutes): self
     {
+        if ($minutes < 0) {
+            throw new ValidationException(
+                message: 'Validity period cannot be negative',
+                errorCode: 'FIELD_INVALID'
+            );
+        }
+
+        if ($minutes > self::MAX_VALIDITY_MINUTES) {
+            throw new ValidationException(
+                message: sprintf(
+                    'Validity period (%d minutes) exceeds maximum of %d minutes (72 hours)',
+                    $minutes,
+                    self::MAX_VALIDITY_MINUTES
+                ),
+                errorCode: 'FIELD_INVALID'
+            );
+        }
+
         $this->validity = $minutes;
 
         return $this;

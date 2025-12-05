@@ -85,6 +85,14 @@ class TransmitSmsConnector extends Connector implements HasPagination
     }
 
     /**
+     * Get the API secret.
+     */
+    public function getApiSecret(): string
+    {
+        return $this->apiSecret;
+    }
+
+    /**
      * Get the base URL.
      */
     public function getBaseUrl(): string

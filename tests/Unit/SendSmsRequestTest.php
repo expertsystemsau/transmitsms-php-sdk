@@ -11,6 +11,18 @@ describe('SendSmsRequest', function () {
             $request = new SendSmsRequest('Hello World');
             expect($request)->toBeInstanceOf(SendSmsRequest::class);
         });
+
+        it('rejects message exceeding max length', function () {
+            $longMessage = str_repeat('a', 613);
+            expect(fn () => new SendSmsRequest($longMessage))
+                ->toThrow(ValidationException::class, 'exceeds maximum');
+        });
+
+        it('accepts message at max length', function () {
+            $maxMessage = str_repeat('a', 612);
+            $request = new SendSmsRequest($maxMessage);
+            expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
     });
 
     describe('fluent builder', function () {
@@ -190,6 +202,47 @@ describe('SendSmsRequest', function () {
             expect(fn () => (new SendSmsRequest('Test'))
                 ->repliesToEmail(''))
                 ->toThrow(ValidationException::class);
+        });
+    });
+
+    describe('recipient validation', function () {
+        it('accepts valid number of recipients', function () {
+            $recipients = implode(',', array_fill(0, 100, '61400000000'));
+            $request = (new SendSmsRequest('Test'))->to($recipients);
+            expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
+
+        it('rejects more than 500 recipients', function () {
+            $recipients = implode(',', array_fill(0, 501, '61400000000'));
+            expect(fn () => (new SendSmsRequest('Test'))->to($recipients))
+                ->toThrow(ValidationException::class, 'exceeds maximum');
+        });
+    });
+
+    describe('validity validation', function () {
+        it('accepts valid validity period', function () {
+            $request = (new SendSmsRequest('Test'))->validity(60);
+            expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
+
+        it('accepts zero validity (maximum period)', function () {
+            $request = (new SendSmsRequest('Test'))->validity(0);
+            expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
+
+        it('accepts max validity (72 hours)', function () {
+            $request = (new SendSmsRequest('Test'))->validity(4320);
+            expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
+
+        it('rejects negative validity', function () {
+            expect(fn () => (new SendSmsRequest('Test'))->validity(-1))
+                ->toThrow(ValidationException::class, 'cannot be negative');
+        });
+
+        it('rejects validity exceeding max', function () {
+            expect(fn () => (new SendSmsRequest('Test'))->validity(4321))
+                ->toThrow(ValidationException::class, 'exceeds maximum');
         });
     });
 });

@@ -135,6 +135,29 @@ describe('DTO transformations', function () {
             expect($dto->mobile)->toBe('61400000000');
             expect($dto->isOptedOut())->toBeTrue();
         });
+
+        it('throws exception when mobile is missing', function () {
+            $data = [
+                'firstname' => 'John',
+                'lastname' => 'Doe',
+                'status' => 'active',
+            ];
+
+            expect(fn () => ContactData::fromResponse($data))
+                ->toThrow(InvalidArgumentException::class, 'valid mobile number');
+        });
+
+        it('throws exception when mobile is empty', function () {
+            $data = [
+                'mobile' => '',
+                'firstname' => 'John',
+                'lastname' => 'Doe',
+                'status' => 'active',
+            ];
+
+            expect(fn () => ContactData::fromResponse($data))
+                ->toThrow(InvalidArgumentException::class, 'valid mobile number');
+        });
     });
 
     describe('ListData', function () {
