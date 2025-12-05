@@ -53,8 +53,9 @@ final class PhoneNumber
             return $cleaned;
         }
 
-        // Remove leading zero(s) from local number (common in AU, NZ, UK, etc.)
-        $cleaned = ltrim($cleaned, '0');
+        // Remove single leading zero from local number (common in AU, NZ, UK, etc.)
+        // Using preg_replace to only remove ONE leading zero, not all of them
+        $cleaned = preg_replace('/^0/', '', $cleaned) ?? $cleaned;
 
         return $dialingCode.$cleaned;
     }

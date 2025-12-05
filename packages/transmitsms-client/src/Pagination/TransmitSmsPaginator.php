@@ -12,9 +12,14 @@ use Saloon\PaginationPlugin\PagedPaginator;
  * Custom paginator for TransmitSMS API responses.
  *
  * The TransmitSMS API uses page-based pagination with:
- * - page: Current page number
+ * - page: Current page number (1-indexed)
  * - max: Items per page
- * - Response contains: page.count, page.number, total, responses[]
+ * - Response contains: page.count (total pages), page.number (current page), total, responses[]
+ *
+ * **Important: Index Conversion**
+ * Saloon's PagedPaginator uses 0-indexed pages internally (starting at 0),
+ * but the TransmitSMS API uses 1-indexed pages (starting at 1).
+ * This class handles the conversion automatically in applyPagination().
  *
  * @see https://docs.saloon.dev/installable-plugins/pagination/paged-pagination
  */

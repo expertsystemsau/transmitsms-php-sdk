@@ -21,6 +21,16 @@ use Saloon\Http\Response;
  */
 class SendSmsRequest extends TransmitSmsRequest
 {
+    /**
+     * Maximum message length in characters (standard SMS concatenation limit).
+     */
+    public const MAX_MESSAGE_LENGTH = 612;
+
+    /**
+     * Maximum validity period in minutes (72 hours).
+     */
+    public const MAX_VALIDITY_MINUTES = 4320;
+
     protected ?string $to = null;
 
     protected ?int $listId = null;
@@ -137,11 +147,14 @@ class SendSmsRequest extends TransmitSmsRequest
     public function scheduledAt(string|DateTimeInterface $sendAt): self
     {
         if ($sendAt instanceof DateTimeInterface) {
-            // Create new DateTimeImmutable in UTC from the timestamp
-            $utc = (new \DateTimeImmutable)
-                ->setTimestamp($sendAt->getTimestamp())
-                ->setTimezone(new DateTimeZone('UTC'));
-            $this->sendAt = $utc->format('Y-m-d H:i:s');
+            // Create DateTimeImmutable directly from Unix timestamp in UTC
+            // Using 'U' format ensures timezone-agnostic conversion
+            $utc = \DateTimeImmutable::createFromFormat(
+                'U',
+                (string) $sendAt->getTimestamp(),
+                new DateTimeZone('UTC')
+            );
+            $this->sendAt = $utc !== false ? $utc->format('Y-m-d H:i:s') : null;
         } else {
             $this->sendAt = $sendAt;
         }
