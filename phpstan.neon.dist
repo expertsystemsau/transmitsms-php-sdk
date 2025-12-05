@@ -10,3 +10,11 @@ parameters:
     tmpDir: build/phpstan
     checkOctaneCompatibility: true
     checkModelProperties: true
+    ignoreErrors:
+        # Config files use env() and are published to the Laravel config directory
+        - identifier: larastan.noEnvCallsOutsideOfConfig
+          path: packages/transmitsms-laravel/config/*
+        # toTransmitSms is a notification convention method
+        -
+            message: "#Call to an undefined method Illuminate\\\\Notifications\\\\Notification::toTransmitSms#"
+            path: packages/transmitsms-laravel/src/Notifications/TransmitSmsChannel.php
