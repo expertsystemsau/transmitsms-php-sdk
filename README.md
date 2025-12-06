@@ -1,8 +1,8 @@
 # TransmitSMS PHP Client
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-client)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
 [![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/expertsystemsau/transmitsms-php-client/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/expertsystemsau/transmitsms-php-client/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-client)
+[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
 
 A PHP client for the [TransmitSMS API](https://transmitsms.com/). This monorepo contains two packages:
 
@@ -16,7 +16,7 @@ A PHP client for the [TransmitSMS API](https://transmitsms.com/). This monorepo 
 Install the core client package:
 
 ```bash
-composer require expertsystemsau/transmitsms-client
+composer require expertsystemsau/transmitsms-php-client
 ```
 
 ### For Laravel Projects
