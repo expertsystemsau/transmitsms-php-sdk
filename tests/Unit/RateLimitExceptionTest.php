@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 use ExpertSystems\TransmitSms\Exceptions\RateLimitException;
 use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
-use GuzzleHttp\Psr7\Response as GuzzleResponse;
-use Saloon\Http\Faking\MockResponse;
-use Saloon\Http\Response;
 
 describe('RateLimitException', function () {
     describe('rate limit metadata', function () {
