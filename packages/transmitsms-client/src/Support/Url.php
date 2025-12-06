@@ -35,6 +35,7 @@ final class Url
         'localhost',
         'localhost.localdomain',
     ];
+
     /**
      * Validate that a URL is well-formed and uses HTTP/HTTPS protocol.
      *
