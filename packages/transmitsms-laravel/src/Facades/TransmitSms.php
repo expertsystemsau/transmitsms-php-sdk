@@ -11,8 +11,15 @@ use Saloon\Http\Response;
 
 /**
  * @method static TransmitSmsConnector connector()
+ * @method static \ExpertSystems\TransmitSms\Resources\AccountResource account()
+ * @method static \ExpertSystems\TransmitSms\Resources\SmsResource sms()
+ * @method static \ExpertSystems\TransmitSms\Resources\ReportingResource reporting()
+ * @method static \ExpertSystems\TransmitSms\Resources\ListsResource lists()
+ * @method static \ExpertSystems\TransmitSms\Resources\NumbersResource numbers()
+ * @method static \ExpertSystems\TransmitSms\Resources\KeywordsResource keywords()
+ * @method static \ExpertSystems\TransmitSms\Resources\EmailSmsResource emailSms()
  * @method static Response send(\ExpertSystems\TransmitSms\Requests\TransmitSmsRequest $request)
- * @method static array sendAndGetJson(\ExpertSystems\TransmitSms\Requests\TransmitSmsRequest $request)
+ * @method static array<string, mixed> sendAndGetJson(\ExpertSystems\TransmitSms\Requests\TransmitSmsRequest $request)
  * @method static TransmitSmsClient useSmsUrl()
  * @method static TransmitSmsClient useMmsUrl()
  * @method static TransmitSmsClient setBaseUrl(string $baseUrl)
