@@ -267,13 +267,16 @@ class SendSmsRequest extends TransmitSmsRequest
     /**
      * Set the delivery report callback URL.
      *
-     * @param  string  $url  URL to receive delivery notifications
+     * This URL will be called by the TransmitSMS API to notify you of delivery status.
+     * SSRF protection is applied to prevent internal network access.
      *
-     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid
+     * @param  string  $url  URL to receive delivery notifications (must be publicly accessible)
+     *
+     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid or points to internal resources
      */
     public function dlrCallback(string $url): self
     {
-        Url::validate($url, 'dlr_callback');
+        Url::validateCallbackUrl($url, 'dlr_callback');
         $this->dlrCallback = $url;
 
         return $this;
@@ -282,13 +285,16 @@ class SendSmsRequest extends TransmitSmsRequest
     /**
      * Set the reply callback URL.
      *
-     * @param  string  $url  URL to receive reply notifications
+     * This URL will be called by the TransmitSMS API when replies are received.
+     * SSRF protection is applied to prevent internal network access.
      *
-     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid
+     * @param  string  $url  URL to receive reply notifications (must be publicly accessible)
+     *
+     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid or points to internal resources
      */
     public function replyCallback(string $url): self
     {
-        Url::validate($url, 'reply_callback');
+        Url::validateCallbackUrl($url, 'reply_callback');
         $this->replyCallback = $url;
 
         return $this;
@@ -297,13 +303,16 @@ class SendSmsRequest extends TransmitSmsRequest
     /**
      * Set the link hits callback URL.
      *
-     * @param  string  $url  URL to receive link click notifications
+     * This URL will be called by the TransmitSMS API when tracked links are clicked.
+     * SSRF protection is applied to prevent internal network access.
      *
-     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid
+     * @param  string  $url  URL to receive link click notifications (must be publicly accessible)
+     *
+     * @throws \ExpertSystems\TransmitSms\Exceptions\ValidationException If the URL is invalid or points to internal resources
      */
     public function linkHitsCallback(string $url): self
     {
-        Url::validate($url, 'link_hits_callback');
+        Url::validateCallbackUrl($url, 'link_hits_callback');
         $this->linkHitsCallback = $url;
 
         return $this;

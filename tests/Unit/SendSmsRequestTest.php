@@ -184,6 +184,41 @@ describe('SendSmsRequest', function () {
         });
     });
 
+    describe('callback URL SSRF protection', function () {
+        it('dlrCallback rejects localhost', function () {
+            expect(fn () => (new SendSmsRequest('Test'))
+                ->dlrCallback('http://localhost/webhook'))
+                ->toThrow(ValidationException::class, 'localhost');
+        });
+
+        it('dlrCallback rejects private IPs', function () {
+            expect(fn () => (new SendSmsRequest('Test'))
+                ->dlrCallback('http://192.168.1.1/webhook'))
+                ->toThrow(ValidationException::class, 'internal or private');
+        });
+
+        it('replyCallback rejects localhost', function () {
+            expect(fn () => (new SendSmsRequest('Test'))
+                ->replyCallback('http://localhost/webhook'))
+                ->toThrow(ValidationException::class, 'localhost');
+        });
+
+        it('linkHitsCallback rejects localhost', function () {
+            expect(fn () => (new SendSmsRequest('Test'))
+                ->linkHitsCallback('http://localhost/webhook'))
+                ->toThrow(ValidationException::class, 'localhost');
+        });
+
+        it('trackedLinkUrl allows localhost (not a callback)', function () {
+            // trackedLinkUrl is for the user to click, not for TransmitSMS to hit
+            // so it doesn't need SSRF protection
+            $request = (new SendSmsRequest('Test'))
+                ->trackedLinkUrl('http://localhost/page');
+
+            expect($request)->toBeInstanceOf(SendSmsRequest::class);
+        });
+    });
+
     describe('email validation', function () {
         it('validates repliesToEmail accepts valid email', function () {
             $request = (new SendSmsRequest('Test'))

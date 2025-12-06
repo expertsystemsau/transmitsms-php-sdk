@@ -60,15 +60,19 @@ class RateLimitException extends TransmitSmsException
     }
 
     /**
-     * Create a RateLimitException from a Saloon response.
+     * Create a RateLimitException from a Saloon response with rate limit metadata.
      *
      * Extracts rate limit metadata from common rate limit headers:
      * - X-RateLimit-Remaining: Requests remaining in current window
      * - X-RateLimit-Limit: Total requests allowed per window
      * - X-RateLimit-Reset: Unix timestamp when window resets
      * - Retry-After: Seconds to wait before retrying
+     *
+     * Note: This method has a different signature than the parent's fromResponse()
+     * because it requires additional context (message, errorCode) that the parent
+     * extracts from the response before delegating here.
      */
-    public static function fromResponse(Response $response, string $message, ?string $errorCode = null): self
+    public static function fromResponseWithMetadata(Response $response, string $message, ?string $errorCode = null): self
     {
         $headers = $response->headers();
 

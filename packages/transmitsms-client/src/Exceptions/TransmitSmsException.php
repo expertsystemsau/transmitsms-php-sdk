@@ -74,7 +74,7 @@ class TransmitSmsException extends Exception
         // For rate limit exceptions, use the specialized factory method
         // to extract rate limit metadata from headers
         if ($exceptionClass === RateLimitException::class) {
-            return RateLimitException::fromResponse($response, $message, $errorCode);
+            return RateLimitException::fromResponseWithMetadata($response, $message, $errorCode);
         }
 
         return new $exceptionClass(
