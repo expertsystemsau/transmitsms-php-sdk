@@ -21,6 +21,7 @@ class TransmitSmsException extends Exception
         'OVER_LIMIT' => RateLimitException::class,
         'FIELD_EMPTY' => ValidationException::class,
         'FIELD_INVALID' => ValidationException::class,
+        'FIELD_UNSAFE' => ValidationException::class,
         'LEDGER_ERROR' => InsufficientFundsException::class,
         'RECIPIENTS_ERROR' => InvalidRecipientsException::class,
         'LIST_EMPTY' => InvalidRecipientsException::class,
