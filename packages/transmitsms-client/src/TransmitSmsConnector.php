@@ -282,13 +282,13 @@ class TransmitSmsConnector extends Connector implements HasPagination
     {
         // Let Saloon handle HTTP errors (4xx, 5xx)
         if ($response->status() >= 400) {
-            return true;
+            return null;
         }
 
         // Check API-level error codes
         $data = $response->json();
 
-        if (isset($data['error'])) {
+        if (isset($data['error']) && is_array($data['error'])) {
             $errorCode = $data['error']['code'] ?? null;
 
             // SUCCESS is not a failure
@@ -296,14 +296,17 @@ class TransmitSmsConnector extends Connector implements HasPagination
                 return false;
             }
 
-            // Any other error code is a failure
-            if ($errorCode !== null) {
+            // Any other known error code is a failure
+            if (is_string($errorCode)) {
                 return true;
             }
+
+            // Unknown error structure - let Saloon decide
+            return null;
         }
 
-        // No error field means success
-        return false;
+        // No error field - let Saloon use default behavior
+        return null;
     }
 
     /**
