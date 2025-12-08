@@ -2,6 +2,14 @@
 
 All notable changes to `transmitsms-php-client` will be documented in this file.
 
+## v1.2.0 - 2025-12-08
+
+### What's Changed
+
+* Implement notification channel with SMS support by @mitchello77 in https://github.com/expertsystemsau/transmitsms-php-client/pull/10
+
+**Full Changelog**: https://github.com/expertsystemsau/transmitsms-php-client/compare/v1.1.0...v1.2.0
+
 ## v1.1.0 - 2025-12-08
 
 ### What's Changed
