@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use ExpertSystems\TransmitSms\Data\SmsData;
 use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
-use ExpertSystems\TransmitSms\Exceptions\ValidationException;
 use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsChannel;
 use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsMessage;
 use ExpertSystems\TransmitSms\Requests\SendSmsRequest;
@@ -280,7 +279,7 @@ describe('TransmitSmsChannel', function () {
                 {
                     // Create a message with content that will trigger validation
                     // We need to trigger validation in the channel
-                    return (new TransmitSmsMessage(str_repeat('a', 613)));
+                    return new TransmitSmsMessage(str_repeat('a', 613));
                 }
             };
 
