@@ -275,6 +275,8 @@ class TransmitSmsConnector extends Connector implements HasPagination
      *
      * @param  \Saloon\Http\Response  $response  The response to check
      * @return bool|null True if failed, false if success, null for default Saloon behavior
+     *
+     * @see https://docs.saloon.dev/the-basics/handling-failures#customising-when-saloon-thinks-a-request-has-failed
      */
     public function hasRequestFailed(\Saloon\Http\Response $response): ?bool
     {
@@ -302,6 +304,19 @@ class TransmitSmsConnector extends Connector implements HasPagination
 
         // No error field means success
         return false;
+    }
+
+    /**
+     * Get the request exception for a failed request.
+     *
+     * Returns a TransmitSmsException with error details from the API response.
+     * This is called by Saloon when throw() is invoked on a failed response.
+     *
+     * @see https://docs.saloon.dev/the-basics/handling-failures#custom-exceptions
+     */
+    public function getRequestException(\Saloon\Http\Response $response, ?\Throwable $senderException): ?\Throwable
+    {
+        return Exceptions\TransmitSmsException::fromResponse($response);
     }
 
     /**

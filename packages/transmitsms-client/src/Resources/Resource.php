@@ -7,7 +7,6 @@ namespace ExpertSystems\TransmitSms\Resources;
 use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
 use ExpertSystems\TransmitSms\Requests\TransmitSmsRequest;
 use ExpertSystems\TransmitSms\TransmitSmsConnector;
-use Saloon\Http\Response;
 
 /**
  * Base resource class for grouping related API requests.
@@ -26,9 +25,9 @@ abstract class Resource
     /**
      * Send a request and return the DTO.
      *
-     * This method sends the request, validates the response, and returns
-     * the DTO. If the response indicates an error, it throws a
-     * TransmitSmsException with the error details from the API.
+     * Uses Saloon's throw() method which leverages the connector's
+     * hasRequestFailed() and getRequestException() methods for proper
+     * error detection and custom exception handling.
      *
      * @template T
      *
@@ -36,33 +35,16 @@ abstract class Resource
      * @return T The DTO created from the response
      *
      * @throws TransmitSmsException If the API returns an error
+     *
+     * @see https://docs.saloon.dev/the-basics/handling-failures
      */
     protected function sendAndDto(TransmitSmsRequest $request): mixed
     {
         $response = $this->connector->send($request);
 
-        $this->validateResponse($response);
+        // throw() uses connector's hasRequestFailed() and getRequestException()
+        $response->throw();
 
         return $response->dto();
-    }
-
-    /**
-     * Validate the API response and throw exception if error.
-     *
-     * @throws TransmitSmsException
-     */
-    protected function validateResponse(Response $response): void
-    {
-        // Check for HTTP errors (4xx, 5xx)
-        if ($response->status() >= 400) {
-            throw TransmitSmsException::fromResponse($response);
-        }
-
-        // Check for API-level errors in the response body
-        $data = $response->json();
-
-        if (isset($data['error']) && ($data['error']['code'] ?? 'SUCCESS') !== 'SUCCESS') {
-            throw TransmitSmsException::fromResponse($response);
-        }
     }
 }
