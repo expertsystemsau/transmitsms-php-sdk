@@ -288,6 +288,13 @@ class TransmitSmsConnector extends Connector implements HasPagination
         // Check API-level error codes
         $data = $response->json();
 
+        // Guard against non-array responses (null, scalar, etc.)
+        // PHPDoc says array but json() can return null if decoding fails
+        /** @phpstan-ignore function.alreadyNarrowedType */
+        if (! is_array($data)) {
+            return null;
+        }
+
         if (isset($data['error']) && is_array($data['error'])) {
             $errorCode = $data['error']['code'] ?? null;
 
