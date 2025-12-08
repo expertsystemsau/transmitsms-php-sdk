@@ -59,7 +59,6 @@ class TransmitSmsChannel
     /**
      * Apply message options to the request.
      *
-     * @param  SendSmsRequest  $request
      * @param  array<string, mixed>  $options
      */
     protected function applyOptions(SendSmsRequest $request, array $options): void
