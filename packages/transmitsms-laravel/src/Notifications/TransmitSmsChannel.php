@@ -49,6 +49,12 @@ class TransmitSmsChannel
             $request->from($from);
         }
 
+        // Apply scheduled send time if set
+        $sendAt = $message->getSendAt();
+        if ($sendAt) {
+            $request->scheduledAt($sendAt);
+        }
+
         // Apply additional options from the message
         $this->applyOptions($request, $message->getOptions());
 
@@ -63,10 +69,6 @@ class TransmitSmsChannel
      */
     protected function applyOptions(SendSmsRequest $request, array $options): void
     {
-        if (isset($options['send_at'])) {
-            $request->scheduledAt($options['send_at']);
-        }
-
         if (isset($options['validity'])) {
             $request->validity((int) $options['validity']);
         }
