@@ -10,6 +10,7 @@ use ExpertSystems\TransmitSms\Exceptions\InvalidSenderException;
 use ExpertSystems\TransmitSms\Exceptions\RateLimitException;
 use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
 use ExpertSystems\TransmitSms\Exceptions\ValidationException;
+use Saloon\Http\Response;
 
 describe('TransmitSmsException', function () {
     describe('exception properties', function () {
@@ -76,6 +77,143 @@ describe('TransmitSmsException', function () {
             $exception = new InvalidSenderException('Invalid sender');
 
             expect($exception)->toBeInstanceOf(TransmitSmsException::class);
+        });
+    });
+
+    describe('fromResponse with array descriptions', function () {
+        it('handles RECIPIENTS_ERROR with fails array', function () {
+            $response = Mockery::mock(Response::class);
+            $response->shouldReceive('json')->andReturn([
+                'error' => [
+                    'code' => 'RECIPIENTS_ERROR',
+                    'description' => [
+                        'fails' => ['0400000001', '0400000002'],
+                        'optouts' => [],
+                    ],
+                ],
+            ]);
+            $response->shouldReceive('status')->andReturn(400);
+
+            $exception = TransmitSmsException::fromResponse($response);
+
+            expect($exception)->toBeInstanceOf(InvalidRecipientsException::class);
+            expect($exception->getMessage())->toContain('invalid numbers');
+            expect($exception->getMessage())->toContain('0400000001');
+            expect($exception->getMessage())->toContain('0400000002');
+            expect($exception->getErrorCode())->toBe('RECIPIENTS_ERROR');
+        });
+
+        it('handles RECIPIENTS_ERROR with optouts array', function () {
+            $response = Mockery::mock(Response::class);
+            $response->shouldReceive('json')->andReturn([
+                'error' => [
+                    'code' => 'RECIPIENTS_ERROR',
+                    'description' => [
+                        'fails' => [],
+                        'optouts' => ['61400000003'],
+                    ],
+                ],
+            ]);
+            $response->shouldReceive('status')->andReturn(400);
+
+            $exception = TransmitSmsException::fromResponse($response);
+
+            expect($exception)->toBeInstanceOf(InvalidRecipientsException::class);
+            expect($exception->getMessage())->toContain('opted-out numbers');
+            expect($exception->getMessage())->toContain('61400000003');
+        });
+
+        it('handles RECIPIENTS_ERROR with both fails and optouts', function () {
+            $response = Mockery::mock(Response::class);
+            $response->shouldReceive('json')->andReturn([
+                'error' => [
+                    'code' => 'RECIPIENTS_ERROR',
+                    'description' => [
+                        'fails' => ['invalid1'],
+                        'optouts' => ['optedout1'],
+                    ],
+                ],
+            ]);
+            $response->shouldReceive('status')->andReturn(400);
+
+            $exception = TransmitSmsException::fromResponse($response);
+
+            expect($exception)->toBeInstanceOf(InvalidRecipientsException::class);
+            expect($exception->getMessage())->toContain('invalid numbers');
+            expect($exception->getMessage())->toContain('invalid1');
+            expect($exception->getMessage())->toContain('opted-out numbers');
+            expect($exception->getMessage())->toContain('optedout1');
+        });
+
+        it('handles RECIPIENTS_ERROR with empty arrays', function () {
+            $response = Mockery::mock(Response::class);
+            $response->shouldReceive('json')->andReturn([
+                'error' => [
+                    'code' => 'RECIPIENTS_ERROR',
+                    'description' => [
+                        'fails' => [],
+                        'optouts' => [],
+                    ],
+                ],
+            ]);
+            $response->shouldReceive('status')->andReturn(400);
+
+            $exception = TransmitSmsException::fromResponse($response);
+
+            expect($exception)->toBeInstanceOf(InvalidRecipientsException::class);
+            expect($exception->getMessage())->toBe('Recipients error - all recipients are invalid or opted out');
+        });
+
+        it('handles string descriptions normally', function () {
+            $response = Mockery::mock(Response::class);
+            $response->shouldReceive('json')->andReturn([
+                'error' => [
+                    'code' => 'FIELD_INVALID',
+                    'description' => 'The message field is required',
+                ],
+            ]);
+            $response->shouldReceive('status')->andReturn(400);
+
+            $exception = TransmitSmsException::fromResponse($response);
+
+            expect($exception)->toBeInstanceOf(ValidationException::class);
+            expect($exception->getMessage())->toBe('The message field is required');
+        });
+
+        it('handles unknown array descriptions with JSON fallback', function () {
+            $response = Mockery::mock(Response::class);
+            $response->shouldReceive('json')->andReturn([
+                'error' => [
+                    'code' => 'SOME_ERROR',
+                    'description' => [
+                        'unknown' => 'structure',
+                        'data' => 123,
+                    ],
+                ],
+            ]);
+            $response->shouldReceive('status')->andReturn(400);
+
+            $exception = TransmitSmsException::fromResponse($response);
+
+            expect($exception)->toBeInstanceOf(TransmitSmsException::class);
+            expect($exception->getMessage())->toContain('SOME_ERROR');
+            expect($exception->getMessage())->toContain('"unknown":"structure"');
+        });
+
+        it('handles null description with informative fallback', function () {
+            $response = Mockery::mock(Response::class);
+            $response->shouldReceive('json')->andReturn([
+                'error' => [
+                    'code' => 'UNKNOWN_ERROR',
+                ],
+            ]);
+            $response->shouldReceive('status')->andReturn(500);
+
+            $exception = TransmitSmsException::fromResponse($response);
+
+            expect($exception)->toBeInstanceOf(TransmitSmsException::class);
+            expect($exception->getMessage())->toContain('HTTP 500');
+            expect($exception->getMessage())->toContain('UNKNOWN_ERROR');
         });
     });
 });
