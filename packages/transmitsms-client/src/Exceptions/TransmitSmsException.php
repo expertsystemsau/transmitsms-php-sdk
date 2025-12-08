@@ -59,8 +59,14 @@ class TransmitSmsException extends Exception
         $httpStatus = $response->status();
 
         // Build informative error message
-        $message = $error['description'] ?? null;
-        if ($message === null) {
+        $description = $error['description'] ?? null;
+
+        // Handle array descriptions (e.g., RECIPIENTS_ERROR returns {"fails":[],"optouts":[]})
+        if (is_array($description)) {
+            $message = self::formatArrayDescription($description, $errorCode);
+        } elseif (is_string($description)) {
+            $message = $description;
+        } else {
             // Provide more context when API doesn't return a description
             $message = sprintf(
                 'API request failed with HTTP %d%s',
@@ -99,5 +105,43 @@ class TransmitSmsException extends Exception
     public function getResponse(): ?Response
     {
         return $this->response;
+    }
+
+    /**
+     * Format an array description into a readable error message.
+     *
+     * @param  array<string, mixed>  $description
+     */
+    protected static function formatArrayDescription(array $description, ?string $errorCode): string
+    {
+        // Handle RECIPIENTS_ERROR format: {"fails":["number1"],"optouts":["number2"]}
+        if (isset($description['fails']) || isset($description['optouts'])) {
+            $parts = [];
+
+            $fails = $description['fails'] ?? [];
+            $optouts = $description['optouts'] ?? [];
+
+            if (! empty($fails)) {
+                $parts[] = 'invalid numbers: '.implode(', ', (array) $fails);
+            }
+
+            if (! empty($optouts)) {
+                $parts[] = 'opted-out numbers: '.implode(', ', (array) $optouts);
+            }
+
+            if (! empty($parts)) {
+                return 'Recipients error - '.implode('; ', $parts);
+            }
+
+            // All recipients invalid but arrays are empty
+            return 'Recipients error - all recipients are invalid or opted out';
+        }
+
+        // Fallback: JSON encode the array for visibility
+        $json = json_encode($description, JSON_UNESCAPED_SLASHES);
+
+        return $errorCode !== null
+            ? sprintf('%s: %s', $errorCode, $json)
+            : sprintf('Error details: %s', $json);
     }
 }
