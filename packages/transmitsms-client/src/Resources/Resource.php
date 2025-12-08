@@ -29,10 +29,8 @@ abstract class Resource
      * hasRequestFailed() and getRequestException() methods for proper
      * error detection and custom exception handling.
      *
-     * @template T
-     *
      * @param  TransmitSmsRequest  $request  The request to send
-     * @return T The DTO created from the response
+     * @return mixed The DTO created from the response
      *
      * @throws TransmitSmsException If the API returns an error
      *
