@@ -267,6 +267,44 @@ class TransmitSmsConnector extends Connector implements HasPagination
     }
 
     /**
+     * Determine if the request has failed.
+     *
+     * TransmitSMS API returns an `error` object even on success with `code: SUCCESS`.
+     * This method ensures that SUCCESS responses are not treated as failures,
+     * which allows Saloon's dtoOrFail() to work correctly.
+     *
+     * @param  \Saloon\Http\Response  $response  The response to check
+     * @return bool|null True if failed, false if success, null for default Saloon behavior
+     */
+    public function hasRequestFailed(\Saloon\Http\Response $response): ?bool
+    {
+        // Let Saloon handle HTTP errors (4xx, 5xx)
+        if ($response->status() >= 400) {
+            return true;
+        }
+
+        // Check API-level error codes
+        $data = $response->json();
+
+        if (isset($data['error'])) {
+            $errorCode = $data['error']['code'] ?? null;
+
+            // SUCCESS is not a failure
+            if ($errorCode === 'SUCCESS') {
+                return false;
+            }
+
+            // Any other error code is a failure
+            if ($errorCode !== null) {
+                return true;
+            }
+        }
+
+        // No error field means success
+        return false;
+    }
+
+    /**
      * Handle retry logic for failed requests.
      *
      * This method is called by Saloon to determine if a request should be retried.

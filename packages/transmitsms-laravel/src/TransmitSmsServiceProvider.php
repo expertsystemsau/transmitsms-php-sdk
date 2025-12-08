@@ -25,15 +25,22 @@ class TransmitSmsServiceProvider extends ServiceProvider
 
         // Register the connector as a singleton
         $this->app->singleton(TransmitSmsConnector::class, function ($app) {
-            /** @var array{api_key: string, api_secret: string, base_url: string, timeout: int} $config */
+            /** @var array{api_key: string, api_secret: string, base_url: string, timeout: int, from: string} $config */
             $config = $app['config']['transmitsms'];
 
-            return new TransmitSmsConnector(
+            $connector = new TransmitSmsConnector(
                 apiKey: $config['api_key'],
                 apiSecret: $config['api_secret'],
                 baseUrl: $config['base_url'],
                 timeout: (int) $config['timeout'],
             );
+
+            // Set default sender ID if configured
+            if (! empty($config['from'])) {
+                $connector->setDefaultFrom($config['from']);
+            }
+
+            return $connector;
         });
 
         // Register the client as a singleton, using the connector
