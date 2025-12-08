@@ -48,7 +48,6 @@ class TransmitSmsMessage
     public function from(string $from): self
     {
         $this->from = $from;
-        $this->options['from'] = $from;
 
         return $this;
     }
@@ -59,7 +58,6 @@ class TransmitSmsMessage
     public function sendAt(string $sendAt): self
     {
         $this->sendAt = $sendAt;
-        $this->options['send_at'] = $sendAt;
 
         return $this;
     }
@@ -98,6 +96,14 @@ class TransmitSmsMessage
     public function getFrom(): ?string
     {
         return $this->from;
+    }
+
+    /**
+     * Get the scheduled send time.
+     */
+    public function getSendAt(): ?string
+    {
+        return $this->sendAt;
     }
 
     /**

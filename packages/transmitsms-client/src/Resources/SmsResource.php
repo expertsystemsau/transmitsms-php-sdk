@@ -40,7 +40,7 @@ class SmsResource extends Resource
         $this->applyDefaults($request, $from);
 
         /** @var SmsData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -61,7 +61,7 @@ class SmsResource extends Resource
         $this->applyDefaults($request, $from);
 
         /** @var SmsData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -75,7 +75,7 @@ class SmsResource extends Resource
     public function sendRequest(SendSmsRequest $request): SmsData
     {
         /** @var SmsData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**
@@ -117,7 +117,7 @@ class SmsResource extends Resource
         $request = new FormatNumberRequest($number, $countryCode);
 
         /** @var FormattedNumberData */
-        return $this->connector->send($request)->dtoOrFail();
+        return $this->sendAndDto($request);
     }
 
     /**

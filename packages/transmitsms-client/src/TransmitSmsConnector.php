@@ -267,6 +267,69 @@ class TransmitSmsConnector extends Connector implements HasPagination
     }
 
     /**
+     * Determine if the request has failed.
+     *
+     * TransmitSMS API returns an `error` object even on success with `code: SUCCESS`.
+     * This method ensures that SUCCESS responses are not treated as failures,
+     * which allows Saloon's dtoOrFail() to work correctly.
+     *
+     * @param  \Saloon\Http\Response  $response  The response to check
+     * @return bool|null True if failed, false if success, null for default Saloon behavior
+     *
+     * @see https://docs.saloon.dev/the-basics/handling-failures#customising-when-saloon-thinks-a-request-has-failed
+     */
+    public function hasRequestFailed(\Saloon\Http\Response $response): ?bool
+    {
+        // Let Saloon handle HTTP errors (4xx, 5xx)
+        if ($response->status() >= 400) {
+            return null;
+        }
+
+        // Check API-level error codes
+        $data = $response->json();
+
+        // Guard against non-array responses (null, scalar, etc.)
+        // PHPDoc says array but json() can return null if decoding fails
+        /** @phpstan-ignore function.alreadyNarrowedType */
+        if (! is_array($data)) {
+            return null;
+        }
+
+        if (isset($data['error']) && is_array($data['error'])) {
+            $errorCode = $data['error']['code'] ?? null;
+
+            // SUCCESS is not a failure
+            if ($errorCode === 'SUCCESS') {
+                return false;
+            }
+
+            // Any other known error code is a failure
+            if (is_string($errorCode)) {
+                return true;
+            }
+
+            // Unknown error structure - let Saloon decide
+            return null;
+        }
+
+        // No error field - let Saloon use default behavior
+        return null;
+    }
+
+    /**
+     * Get the request exception for a failed request.
+     *
+     * Returns a TransmitSmsException with error details from the API response.
+     * This is called by Saloon when throw() is invoked on a failed response.
+     *
+     * @see https://docs.saloon.dev/the-basics/handling-failures#custom-exceptions
+     */
+    public function getRequestException(\Saloon\Http\Response $response, ?\Throwable $senderException): ?\Throwable
+    {
+        return Exceptions\TransmitSmsException::fromResponse($response);
+    }
+
+    /**
      * Handle retry logic for failed requests.
      *
      * This method is called by Saloon to determine if a request should be retried.

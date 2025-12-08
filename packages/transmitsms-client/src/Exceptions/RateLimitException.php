@@ -74,7 +74,7 @@ class RateLimitException extends TransmitSmsException
      */
     public static function fromResponseWithMetadata(Response $response, string $message, ?string $errorCode = null): self
     {
-        $headers = $response->headers();
+        $headers = $response->headers()->all();
 
         // Extract rate limit headers (case-insensitive)
         $rateLimitRemaining = self::extractIntHeader($headers, 'X-RateLimit-Remaining');
@@ -137,7 +137,8 @@ class RateLimitException extends TransmitSmsException
 
             $value = $headers[$headerName][0];
 
-            if ($value === null) {
+            // Skip empty values (isset already excludes null)
+            if ($value === '') {
                 continue;
             }
 
