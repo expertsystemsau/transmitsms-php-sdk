@@ -5,7 +5,7 @@ Laravel notification channel and integration for the [TransmitSMS API](https://t
 ## Installation
 
 ```bash
-composer require expertsystemsau/transmitsms-laravel
+composer require expertsystemsau/transmitsms-laravel-client
 ```
 
 Publish the configuration file:

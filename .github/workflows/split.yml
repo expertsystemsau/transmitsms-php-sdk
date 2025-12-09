@@ -28,9 +28,11 @@ jobs:
           fetch-depth: 0
 
       - name: Split ${{ matrix.package.name }}
-        uses: claudiodekker/splitsh-action@v1
+        uses: claudiodekker/splitsh-action@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.SPLIT_PAT }}
         with:
-          path: ${{ matrix.package.path }}
-          target_repo: ${{ matrix.package.target }}
-          target_branch: ${{ github.ref_name }}
-          access_token: ${{ secrets.SPLIT_PAT }}
+          prefix: ${{ matrix.package.path }}
+          remote: https://github.com/${{ matrix.package.target }}.git
+          reference: ${{ github.ref_name }}
+          as_tag: ${{ startsWith(github.ref, 'refs/tags/') }}

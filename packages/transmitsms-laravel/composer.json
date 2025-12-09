@@ -8,7 +8,7 @@
         "sms",
         "notification-channel"
     ],
-    "homepage": "https://github.com/expertsystemsau/transmitsms-php-client",
+    "homepage": "https://github.com/expertsystemsau/transmitsms-laravel-client",
     "license": "MIT",
     "authors": [
         {
