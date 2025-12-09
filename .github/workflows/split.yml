@@ -33,4 +33,4 @@ jobs:
           path: ${{ matrix.package.path }}
           target_repo: ${{ matrix.package.target }}
           target_branch: ${{ github.ref_name }}
-          ssh_key: ${{ secrets.SPLIT_SSH_KEY }}
+          access_token: ${{ secrets.SPLIT_PAT }}
