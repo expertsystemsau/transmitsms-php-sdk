@@ -24,7 +24,7 @@ composer require expertsystemsau/transmitsms-php-client
 Install the Laravel integration package (includes the core client):
 
 ```bash
-composer require expertsystemsau/transmitsms-laravel
+composer require expertsystemsau/transmitsms-laravel-client
 ```
 
 Then publish the configuration file:
