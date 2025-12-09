@@ -1,5 +1,9 @@
 # TransmitSMS Laravel Integration
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
+[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
+[![License](https://img.shields.io/packagist/l/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
+
 Laravel notification channel and integration for the [TransmitSMS API](https://transmitsms.com/).
 
 ## Installation

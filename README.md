@@ -1,13 +1,22 @@
-# TransmitSMS PHP Client
-
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/expertsystemsau/transmitsms-php-client/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/expertsystemsau/transmitsms-php-client/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
+# TransmitSMS PHP SDK
 
 A PHP client for the [TransmitSMS API](https://transmitsms.com/). This monorepo contains two packages:
 
-- **`expertsystemsau/transmitsms-client`** - Framework-agnostic PHP client
-- **`expertsystemsau/transmitsms-laravel`** - Laravel notification channel integration
+### expertsystemsau/transmitsms-php-client
+
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
+[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
+[![License](https://img.shields.io/packagist/l/expertsystemsau/transmitsms-php-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-php-client)
+
+Framework-agnostic PHP client for the TransmitSMS API.
+
+### expertsystemsau/transmitsms-laravel-client
+
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
+[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
+[![License](https://img.shields.io/packagist/l/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
+
+Laravel notification channel integration (includes the core client).
 
 ## Installation
 
