@@ -1,5 +1,5 @@
 {
-    "name": "expertsystemsau/transmitsms-laravel",
+    "name": "expertsystemsau/transmitsms-laravel-client",
     "description": "Laravel notification channel and integration for the TransmitSMS API",
     "keywords": [
         "ExpertSystems",
@@ -19,7 +19,7 @@
     ],
     "require": {
         "php": "^8.2",
-        "expertsystemsau/transmitsms-client": "^1.0",
+        "expertsystemsau/transmitsms-php-client": "^1.0",
         "illuminate/notifications": "^10.0||^11.0||^12.0",
         "illuminate/support": "^10.0||^11.0||^12.0",
         "saloonphp/laravel-plugin": "^3.0"

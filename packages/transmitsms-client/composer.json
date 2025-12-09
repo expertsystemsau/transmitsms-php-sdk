@@ -1,5 +1,5 @@
 {
-    "name": "expertsystemsau/transmitsms-client",
+    "name": "expertsystemsau/transmitsms-php-client",
     "description": "Framework-agnostic PHP client for the TransmitSMS API",
     "keywords": [
         "ExpertSystems",

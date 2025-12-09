@@ -1,5 +1,5 @@
 {
-    "name": "expertsystemsau/transmitsms-php-client",
+    "name": "expertsystemsau/transmitsms-php-sdk",
     "description": "TransmitSMS PHP Client Monorepo - Contains both the core PHP client and Laravel integration",
     "keywords": [
         "ExpertSystems",
