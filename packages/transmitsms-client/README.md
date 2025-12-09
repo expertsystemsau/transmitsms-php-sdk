@@ -5,7 +5,7 @@ A framework-agnostic PHP client for the [TransmitSMS API](https://transmitsms.co
 ## Installation
 
 ```bash
-composer require expertsystemsau/transmitsms-client
+composer require expertsystemsau/transmitsms-php-client
 ```
 
 ## Usage
@@ -46,7 +46,7 @@ $client->addContact(123, '+61400000000', ['first_name' => 'John']);
 
 ## Laravel Integration
 
-For Laravel projects, use [expertsystemsau/transmitsms-laravel](https://packagist.org/packages/expertsystemsau/transmitsms-laravel) which provides a service provider, facade, and notification channel.
+For Laravel projects, use [expertsystemsau/transmitsms-laravel-client](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client) which provides a service provider, facade, and notification channel.
 
 ## License
 
