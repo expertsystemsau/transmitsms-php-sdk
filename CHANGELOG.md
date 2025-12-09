@@ -2,6 +2,16 @@
 
 All notable changes to `transmitsms-php-client` will be documented in this file.
 
+## v1.3.0 - 2025-12-09
+
+### What's Changed
+
+* update to split to pakagist by @mitchello77 in https://github.com/expertsystemsau/transmitsms-php-sdk/pull/11
+* Bump actions/checkout from 4 to 6 by @dependabot[bot] in https://github.com/expertsystemsau/transmitsms-php-sdk/pull/9
+* Check splitsh config workflow by @mitchello77 in https://github.com/expertsystemsau/transmitsms-php-sdk/pull/12
+
+**Full Changelog**: https://github.com/expertsystemsau/transmitsms-php-sdk/compare/v1.2.0...v1.3.0
+
 ## v1.2.0 - 2025-12-08
 
 ### What's Changed
