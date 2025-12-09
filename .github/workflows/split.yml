@@ -1,0 +1,36 @@
+name: Split Monorepo
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - name: transmitsms-client
+            path: packages/transmitsms-client
+            target: expertsystemsau/transmitsms-client
+          - name: transmitsms-laravel
+            path: packages/transmitsms-laravel
+            target: expertsystemsau/transmitsms-laravel
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Split ${{ matrix.package.name }}
+        uses: claudiodekker/splitsh-action@v1
+        with:
+          path: ${{ matrix.package.path }}
+          target_repo: ${{ matrix.package.target }}
+          target_branch: ${{ github.ref_name }}
+          ssh_key: ${{ secrets.SPLIT_SSH_KEY }}
