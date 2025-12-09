@@ -16,10 +16,10 @@ jobs:
         package:
           - name: transmitsms-client
             path: packages/transmitsms-client
-            target: expertsystemsau/transmitsms-client
+            target: expertsystemsau/transmitsms-php-client
           - name: transmitsms-laravel
             path: packages/transmitsms-laravel
-            target: expertsystemsau/transmitsms-laravel
+            target: expertsystemsau/transmitsms-laravel-client
 
     steps:
       - name: Checkout code
