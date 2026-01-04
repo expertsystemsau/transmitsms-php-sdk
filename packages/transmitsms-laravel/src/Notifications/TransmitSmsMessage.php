@@ -14,8 +14,19 @@ class TransmitSmsMessage
 
     protected ?string $sendAt = null;
 
-    /** @var array<string, mixed> */
-    protected array $options = [];
+    protected ?int $validity = null;
+
+    protected ?string $countryCode = null;
+
+    protected ?string $repliesToEmail = null;
+
+    protected ?string $trackedLinkUrl = null;
+
+    protected ?string $dlrCallback = null;
+
+    protected ?string $replyCallback = null;
+
+    protected ?string $linkHitsCallback = null;
 
     public function __construct(string $content = '')
     {
@@ -63,13 +74,71 @@ class TransmitSmsMessage
     }
 
     /**
-     * Set additional options for the API request.
-     *
-     * @param  array<string, mixed>  $options
+     * Set the message validity period in minutes.
      */
-    public function options(array $options): self
+    public function validity(int $validity): self
     {
-        $this->options = array_merge($this->options, $options);
+        $this->validity = $validity;
+
+        return $this;
+    }
+
+    /**
+     * Set the country code for the recipient number.
+     */
+    public function countryCode(string $countryCode): self
+    {
+        $this->countryCode = $countryCode;
+
+        return $this;
+    }
+
+    /**
+     * Set the email address to receive replies.
+     */
+    public function repliesToEmail(string $repliesToEmail): self
+    {
+        $this->repliesToEmail = $repliesToEmail;
+
+        return $this;
+    }
+
+    /**
+     * Set the URL to track link clicks.
+     */
+    public function trackedLinkUrl(string $trackedLinkUrl): self
+    {
+        $this->trackedLinkUrl = $trackedLinkUrl;
+
+        return $this;
+    }
+
+    /**
+     * Set the delivery receipt callback URL.
+     */
+    public function dlrCallback(string $dlrCallback): self
+    {
+        $this->dlrCallback = $dlrCallback;
+
+        return $this;
+    }
+
+    /**
+     * Set the reply callback URL.
+     */
+    public function replyCallback(string $replyCallback): self
+    {
+        $this->replyCallback = $replyCallback;
+
+        return $this;
+    }
+
+    /**
+     * Set the link hits callback URL.
+     */
+    public function linkHitsCallback(string $linkHitsCallback): self
+    {
+        $this->linkHitsCallback = $linkHitsCallback;
 
         return $this;
     }
@@ -107,12 +176,58 @@ class TransmitSmsMessage
     }
 
     /**
-     * Get all options for the API request.
-     *
-     * @return array<string, mixed>
+     * Get the message validity period in minutes.
      */
-    public function getOptions(): array
+    public function getValidity(): ?int
     {
-        return $this->options;
+        return $this->validity;
+    }
+
+    /**
+     * Get the country code.
+     */
+    public function getCountryCode(): ?string
+    {
+        return $this->countryCode;
+    }
+
+    /**
+     * Get the email address to receive replies.
+     */
+    public function getRepliesToEmail(): ?string
+    {
+        return $this->repliesToEmail;
+    }
+
+    /**
+     * Get the tracked link URL.
+     */
+    public function getTrackedLinkUrl(): ?string
+    {
+        return $this->trackedLinkUrl;
+    }
+
+    /**
+     * Get the delivery receipt callback URL.
+     */
+    public function getDlrCallback(): ?string
+    {
+        return $this->dlrCallback;
+    }
+
+    /**
+     * Get the reply callback URL.
+     */
+    public function getReplyCallback(): ?string
+    {
+        return $this->replyCallback;
+    }
+
+    /**
+     * Get the link hits callback URL.
+     */
+    public function getLinkHitsCallback(): ?string
+    {
+        return $this->linkHitsCallback;
     }
 }

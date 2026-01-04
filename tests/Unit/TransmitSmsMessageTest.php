@@ -46,17 +46,80 @@ describe('TransmitSmsMessage', function () {
             expect($message->getSendAt())->toBe('2025-12-06 10:00:00');
         });
 
+        it('sets validity via validity() method', function () {
+            $message = (new TransmitSmsMessage('Test'))
+                ->validity(60);
+
+            expect($message->getValidity())->toBe(60);
+        });
+
+        it('sets country code via countryCode() method', function () {
+            $message = (new TransmitSmsMessage('Test'))
+                ->countryCode('AU');
+
+            expect($message->getCountryCode())->toBe('AU');
+        });
+
+        it('sets replies to email via repliesToEmail() method', function () {
+            $message = (new TransmitSmsMessage('Test'))
+                ->repliesToEmail('test@example.com');
+
+            expect($message->getRepliesToEmail())->toBe('test@example.com');
+        });
+
+        it('sets tracked link URL via trackedLinkUrl() method', function () {
+            $message = (new TransmitSmsMessage('Test'))
+                ->trackedLinkUrl('https://example.com/track');
+
+            expect($message->getTrackedLinkUrl())->toBe('https://example.com/track');
+        });
+
+        it('sets DLR callback via dlrCallback() method', function () {
+            $message = (new TransmitSmsMessage('Test'))
+                ->dlrCallback('https://example.com/dlr');
+
+            expect($message->getDlrCallback())->toBe('https://example.com/dlr');
+        });
+
+        it('sets reply callback via replyCallback() method', function () {
+            $message = (new TransmitSmsMessage('Test'))
+                ->replyCallback('https://example.com/reply');
+
+            expect($message->getReplyCallback())->toBe('https://example.com/reply');
+        });
+
+        it('sets link hits callback via linkHitsCallback() method', function () {
+            $message = (new TransmitSmsMessage('Test'))
+                ->linkHitsCallback('https://example.com/hits');
+
+            expect($message->getLinkHitsCallback())->toBe('https://example.com/hits');
+        });
+
         it('chains all methods together', function () {
             $message = (new TransmitSmsMessage)
                 ->content('Hello World')
                 ->to('61400000000')
                 ->from('MyBrand')
-                ->sendAt('2025-12-06 10:00:00');
+                ->sendAt('2025-12-06 10:00:00')
+                ->validity(60)
+                ->countryCode('AU')
+                ->repliesToEmail('test@example.com')
+                ->trackedLinkUrl('https://example.com/track')
+                ->dlrCallback('https://example.com/dlr')
+                ->replyCallback('https://example.com/reply')
+                ->linkHitsCallback('https://example.com/hits');
 
             expect($message->getContent())->toBe('Hello World');
             expect($message->getTo())->toBe('61400000000');
             expect($message->getFrom())->toBe('MyBrand');
             expect($message->getSendAt())->toBe('2025-12-06 10:00:00');
+            expect($message->getValidity())->toBe(60);
+            expect($message->getCountryCode())->toBe('AU');
+            expect($message->getRepliesToEmail())->toBe('test@example.com');
+            expect($message->getTrackedLinkUrl())->toBe('https://example.com/track');
+            expect($message->getDlrCallback())->toBe('https://example.com/dlr');
+            expect($message->getReplyCallback())->toBe('https://example.com/reply');
+            expect($message->getLinkHitsCallback())->toBe('https://example.com/hits');
         });
 
         it('returns self for fluent chaining', function () {
@@ -66,40 +129,13 @@ describe('TransmitSmsMessage', function () {
             expect($message->to('61400000000'))->toBe($message);
             expect($message->from('MyBrand'))->toBe($message);
             expect($message->sendAt('2025-12-06 10:00:00'))->toBe($message);
-            expect($message->options(['key' => 'value']))->toBe($message);
-        });
-    });
-
-    describe('options', function () {
-        it('sets options via options() method', function () {
-            $message = (new TransmitSmsMessage('Test'))
-                ->options(['validity' => 60]);
-
-            expect($message->getOptions())->toBe(['validity' => 60]);
-        });
-
-        it('merges options on multiple calls', function () {
-            $message = (new TransmitSmsMessage('Test'))
-                ->options(['validity' => 60])
-                ->options(['country_code' => 'AU']);
-
-            expect($message->getOptions())->toBe([
-                'validity' => 60,
-                'country_code' => 'AU',
-            ]);
-        });
-
-        it('overwrites existing options with same key', function () {
-            $message = (new TransmitSmsMessage('Test'))
-                ->options(['validity' => 60])
-                ->options(['validity' => 120]);
-
-            expect($message->getOptions())->toBe(['validity' => 120]);
-        });
-
-        it('returns empty array by default', function () {
-            $message = new TransmitSmsMessage('Test');
-            expect($message->getOptions())->toBe([]);
+            expect($message->validity(60))->toBe($message);
+            expect($message->countryCode('AU'))->toBe($message);
+            expect($message->repliesToEmail('test@example.com'))->toBe($message);
+            expect($message->trackedLinkUrl('https://example.com/track'))->toBe($message);
+            expect($message->dlrCallback('https://example.com/dlr'))->toBe($message);
+            expect($message->replyCallback('https://example.com/reply'))->toBe($message);
+            expect($message->linkHitsCallback('https://example.com/hits'))->toBe($message);
         });
     });
 
@@ -117,6 +153,41 @@ describe('TransmitSmsMessage', function () {
         it('returns null for unset sendAt', function () {
             $message = new TransmitSmsMessage('Test');
             expect($message->getSendAt())->toBeNull();
+        });
+
+        it('returns null for unset validity', function () {
+            $message = new TransmitSmsMessage('Test');
+            expect($message->getValidity())->toBeNull();
+        });
+
+        it('returns null for unset countryCode', function () {
+            $message = new TransmitSmsMessage('Test');
+            expect($message->getCountryCode())->toBeNull();
+        });
+
+        it('returns null for unset repliesToEmail', function () {
+            $message = new TransmitSmsMessage('Test');
+            expect($message->getRepliesToEmail())->toBeNull();
+        });
+
+        it('returns null for unset trackedLinkUrl', function () {
+            $message = new TransmitSmsMessage('Test');
+            expect($message->getTrackedLinkUrl())->toBeNull();
+        });
+
+        it('returns null for unset dlrCallback', function () {
+            $message = new TransmitSmsMessage('Test');
+            expect($message->getDlrCallback())->toBeNull();
+        });
+
+        it('returns null for unset replyCallback', function () {
+            $message = new TransmitSmsMessage('Test');
+            expect($message->getReplyCallback())->toBeNull();
+        });
+
+        it('returns null for unset linkHitsCallback', function () {
+            $message = new TransmitSmsMessage('Test');
+            expect($message->getLinkHitsCallback())->toBeNull();
         });
     });
 });

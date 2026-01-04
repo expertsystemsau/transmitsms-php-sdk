@@ -237,11 +237,9 @@ describe('TransmitSmsChannel', function () {
                 public function toTransmitSms($notifiable)
                 {
                     return (new TransmitSmsMessage('Test'))
-                        ->options([
-                            'validity' => 60,
-                            'country_code' => 'AU',
-                            'replies_to_email' => 'test@example.com',
-                        ]);
+                        ->validity(60)
+                        ->countryCode('AU')
+                        ->repliesToEmail('test@example.com');
                 }
             };
 
