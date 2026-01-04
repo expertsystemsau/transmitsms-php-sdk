@@ -2,6 +2,15 @@
 
 All notable changes to `transmitsms-php-client` will be documented in this file.
 
+## v1.4.0 - 2026-01-04
+
+### What's Changed
+
+* Add automatic release creation for split packages by @mitchello77 in https://github.com/expertsystemsau/transmitsms-php-sdk/pull/13
+* Add Packagist badges to README files by @mitchello77 in https://github.com/expertsystemsau/transmitsms-php-sdk/pull/14
+
+**Full Changelog**: https://github.com/expertsystemsau/transmitsms-php-sdk/compare/v1.3.0...v1.4.0
+
 ## v1.3.0 - 2025-12-09
 
 ### What's Changed
