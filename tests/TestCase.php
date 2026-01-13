@@ -22,6 +22,7 @@ class TestCase extends Orchestra
     public function getEnvironmentSetUp($app)
     {
         config()->set('database.default', 'testing');
+        config()->set('app.key', 'base64:'.base64_encode('test-app-key-32-bytes-long!!!!'));
         config()->set('transmitsms.api_key', 'test-api-key');
         config()->set('transmitsms.api_secret', 'test-api-secret');
     }

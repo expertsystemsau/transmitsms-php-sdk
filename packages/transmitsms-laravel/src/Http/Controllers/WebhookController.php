@@ -9,6 +9,9 @@ use ExpertSystems\TransmitSms\Data\DlrCallbackData;
 use ExpertSystems\TransmitSms\Data\LinkHitCallbackData;
 use ExpertSystems\TransmitSms\Data\ReplyCallbackData;
 use ExpertSystems\TransmitSms\Exceptions\InvalidSignatureException;
+use ExpertSystems\TransmitSms\Laravel\Contracts\HandlesDlrCallback;
+use ExpertSystems\TransmitSms\Laravel\Contracts\HandlesLinkHitCallback;
+use ExpertSystems\TransmitSms\Laravel\Contracts\HandlesReplyCallback;
 use ExpertSystems\TransmitSms\Laravel\Events\DlrReceived;
 use ExpertSystems\TransmitSms\Laravel\Events\LinkHitReceived;
 use ExpertSystems\TransmitSms\Laravel\Events\ReplyReceived;
@@ -51,7 +54,8 @@ class WebhookController extends Controller
                 $parsed['handler'],
                 $dlr,
                 $parsed['context'],
-                config('transmitsms.webhooks.dlr.queue', 'default')
+                config('transmitsms.webhooks.dlr.queue', 'default'),
+                HandlesDlrCallback::class
             );
         }
 
@@ -81,7 +85,8 @@ class WebhookController extends Controller
                 $parsed['handler'],
                 $reply,
                 $parsed['context'],
-                config('transmitsms.webhooks.reply.queue', 'default')
+                config('transmitsms.webhooks.reply.queue', 'default'),
+                HandlesReplyCallback::class
             );
         }
 
@@ -111,7 +116,8 @@ class WebhookController extends Controller
                 $parsed['handler'],
                 $linkHit,
                 $parsed['context'],
-                config('transmitsms.webhooks.link_hits.queue', 'default')
+                config('transmitsms.webhooks.link_hits.queue', 'default'),
+                HandlesLinkHitCallback::class
             );
         }
 
@@ -123,15 +129,26 @@ class WebhookController extends Controller
      *
      * @param  class-string  $handlerClass
      * @param  array<string, mixed>  $context
+     * @param  class-string  $expectedInterface
      */
     protected function dispatchHandler(
         string $handlerClass,
         object $callbackData,
         array $context,
         string $queue,
+        string $expectedInterface,
     ): void {
         if (! class_exists($handlerClass)) {
             report(new \RuntimeException("TransmitSMS callback handler class not found: {$handlerClass}"));
+
+            return;
+        }
+
+        // Validate handler implements the expected interface
+        if (! is_a($handlerClass, $expectedInterface, true)) {
+            report(new \RuntimeException(
+                "TransmitSMS callback handler {$handlerClass} must implement {$expectedInterface}"
+            ));
 
             return;
         }

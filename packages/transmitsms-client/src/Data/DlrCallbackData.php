@@ -18,15 +18,24 @@ final readonly class DlrCallbackData
 
     public const STATUS_FAILED = 'failed';
 
+    /**
+     * @param  string  $status  Status is normalized to lowercase
+     */
     public function __construct(
         public int $messageId,
         public string $mobile,
-        public string $status,
+        string $status,
         public ?string $datetime,
         public ?string $senderId,
         public ?string $errorCode,
         public ?string $errorDescription,
-    ) {}
+    ) {
+        // Normalize status to lowercase for consistent comparison
+        $this->status = strtolower($status);
+    }
+
+    /** @var string Normalized status (lowercase) */
+    public string $status;
 
     /**
      * Create from callback request data.
@@ -51,7 +60,7 @@ final readonly class DlrCallbackData
      */
     public function isDelivered(): bool
     {
-        return strtolower($this->status) === self::STATUS_DELIVERED;
+        return $this->status === self::STATUS_DELIVERED;
     }
 
     /**
@@ -59,7 +68,7 @@ final readonly class DlrCallbackData
      */
     public function isPending(): bool
     {
-        return strtolower($this->status) === self::STATUS_PENDING;
+        return $this->status === self::STATUS_PENDING;
     }
 
     /**
@@ -67,7 +76,7 @@ final readonly class DlrCallbackData
      */
     public function isFailed(): bool
     {
-        return strtolower($this->status) === self::STATUS_FAILED;
+        return $this->status === self::STATUS_FAILED;
     }
 
     /**

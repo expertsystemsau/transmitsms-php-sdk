@@ -125,6 +125,8 @@ class TransmitSmsServiceProvider extends ServiceProvider
      * Get the signing key for callback URLs.
      *
      * @param  \Illuminate\Contracts\Foundation\Application  $app
+     *
+     * @throws \RuntimeException If no signing key is configured
      */
     protected function getSigningKey($app): string
     {
@@ -142,7 +144,14 @@ class TransmitSmsServiceProvider extends ServiceProvider
             $appKey = base64_decode(substr($appKey, 7));
         }
 
-        return $appKey ?: 'default-signing-key';
+        if (empty($appKey)) {
+            throw new \RuntimeException(
+                'TransmitSMS webhook signing key is not configured. ' .
+                'Set TRANSMITSMS_SIGNING_KEY in your .env file or ensure APP_KEY is set.'
+            );
+        }
+
+        return $appKey;
     }
 
     /**

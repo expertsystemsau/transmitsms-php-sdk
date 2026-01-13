@@ -52,9 +52,21 @@ class CallbackUrlParser
             throw new InvalidSignatureException('Invalid callback signature');
         }
 
+        $decodedContext = [];
+        if ($context !== null) {
+            $decodedContextString = $this->decode($context);
+            if ($decodedContextString !== '') {
+                try {
+                    $decodedContext = json_decode($decodedContextString, true, 512, JSON_THROW_ON_ERROR);
+                } catch (\JsonException $e) {
+                    throw new InvalidSignatureException('Invalid callback context: malformed JSON');
+                }
+            }
+        }
+
         return [
             'handler' => $handler !== null ? $this->decode($handler) : null,
-            'context' => $context !== null ? json_decode($this->decode($context), true) ?? [] : [],
+            'context' => $decodedContext,
         ];
     }
 
