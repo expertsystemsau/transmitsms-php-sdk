@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace ExpertSystems\TransmitSms\Laravel;
 
+use ExpertSystems\TransmitSms\Callbacks\CallbackUrlBuilder;
+use ExpertSystems\TransmitSms\Callbacks\CallbackUrlParser;
 use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsChannel;
 use ExpertSystems\TransmitSms\TransmitSmsClient;
 use ExpertSystems\TransmitSms\TransmitSmsConnector;
 use Illuminate\Notifications\ChannelManager;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
 class TransmitSmsServiceProvider extends ServiceProvider
@@ -50,6 +53,28 @@ class TransmitSmsServiceProvider extends ServiceProvider
             );
         });
 
+        // Register the callback URL builder
+        $this->app->singleton(CallbackUrlBuilder::class, function ($app) {
+            $prefix = $app['config']['transmitsms.webhooks.prefix'] ?? 'webhooks/transmitsms';
+            $baseUrl = $app['url']->to($prefix);
+            $signingKey = $this->getSigningKey($app);
+
+            return new CallbackUrlBuilder($baseUrl, $signingKey);
+        });
+
+        // Register the callback URL parser
+        $this->app->singleton(CallbackUrlParser::class, function ($app) {
+            return new CallbackUrlParser($this->getSigningKey($app));
+        });
+
+        // Register the notification channel
+        $this->app->singleton(TransmitSmsChannel::class, function ($app) {
+            return new TransmitSmsChannel(
+                $app->make(TransmitSmsClient::class),
+                $app->make(CallbackUrlBuilder::class)
+            );
+        });
+
         // Create aliases for easier resolution
         $this->app->alias(TransmitSmsClient::class, 'transmitsms');
         $this->app->alias(TransmitSmsConnector::class, 'transmitsms.connector');
@@ -66,11 +91,67 @@ class TransmitSmsServiceProvider extends ServiceProvider
             ], 'transmitsms-config');
         }
 
+        // Register the notification channel
         Notification::resolved(function (ChannelManager $service) {
             $service->extend('transmitsms', function ($app) {
                 return $app->make(TransmitSmsChannel::class);
             });
         });
+
+        // Register webhook routes if enabled
+        $this->registerWebhookRoutes();
+    }
+
+    /**
+     * Register the webhook routes.
+     */
+    protected function registerWebhookRoutes(): void
+    {
+        if (! $this->app['config']['transmitsms.webhooks.enabled']) {
+            return;
+        }
+
+        $prefix = $this->app['config']['transmitsms.webhooks.prefix'] ?? 'webhooks/transmitsms';
+        $middleware = $this->app['config']['transmitsms.webhooks.middleware'] ?? ['api'];
+
+        Route::prefix($prefix)
+            ->middleware($middleware)
+            ->group(function () {
+                $this->loadRoutesFrom(__DIR__.'/../routes/webhooks.php');
+            });
+    }
+
+    /**
+     * Get the signing key for callback URLs.
+     *
+     * @param  \Illuminate\Contracts\Foundation\Application  $app
+     *
+     * @throws \RuntimeException If no signing key is configured
+     */
+    protected function getSigningKey($app): string
+    {
+        $signingKey = $app['config']['transmitsms.webhooks.signing_key'];
+
+        if (! empty($signingKey)) {
+            return $signingKey;
+        }
+
+        // Fall back to APP_KEY
+        $appKey = $app['config']['app.key'] ?? '';
+
+        // Remove the base64: prefix if present
+        if (str_starts_with($appKey, 'base64:')) {
+            $appKey = base64_decode(substr($appKey, 7));
+        }
+
+        if (empty($appKey)) {
+            throw new \RuntimeException(
+                'TransmitSMS webhook signing key is not configured. '.
+                'Set TRANSMITSMS_SIGNING_KEY in your .env file or ensure APP_KEY is set.'
+            );
+        }
+
+        return $appKey;
     }
 
     /**
@@ -83,6 +164,9 @@ class TransmitSmsServiceProvider extends ServiceProvider
         return [
             TransmitSmsClient::class,
             TransmitSmsConnector::class,
+            TransmitSmsChannel::class,
+            CallbackUrlBuilder::class,
+            CallbackUrlParser::class,
             'transmitsms',
             'transmitsms.connector',
         ];

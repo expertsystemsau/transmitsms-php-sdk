@@ -1,15 +1,15 @@
 # TransmitSMS Laravel Integration
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
-[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
-[![License](https://img.shields.io/packagist/l/expertsystemsau/transmitsms-laravel-client.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel-client)
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/expertsystemsau/transmitsms-laravel.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel)
+[![Total Downloads](https://img.shields.io/packagist/dt/expertsystemsau/transmitsms-laravel.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel)
+[![License](https://img.shields.io/packagist/l/expertsystemsau/transmitsms-laravel.svg?style=flat-square)](https://packagist.org/packages/expertsystemsau/transmitsms-laravel)
 
 Laravel notification channel and integration for the [TransmitSMS API](https://transmitsms.com/).
 
 ## Installation
 
 ```bash
-composer require expertsystemsau/transmitsms-laravel-client
+composer require expertsystemsau/transmitsms-laravel
 ```
 
 Publish the configuration file:
@@ -59,8 +59,7 @@ class OrderShipped extends Notification
 
     public function toTransmitSms($notifiable): TransmitSmsMessage
     {
-        return (new TransmitSmsMessage())
-            ->content('Your order has been shipped!')
+        return TransmitSmsMessage::create('Your order has been shipped!')
             ->from('MyStore');
     }
 }
@@ -84,6 +83,320 @@ Then send notifications:
 
 ```php
 $user->notify(new OrderShipped());
+```
+
+## DLR & Reply Callbacks
+
+The package provides automatic handling for DLR (Delivery Receipt), Reply, and Link Hit callbacks. When you send an SMS, you can specify a job to be dispatched when a callback is received.
+
+### Quick Start
+
+```php
+use App\Jobs\UpdateOrderSmsStatusJob;
+use App\Jobs\ProcessCustomerReplyJob;
+use ExpertSystems\TransmitSms\Laravel\Notifications\TransmitSmsMessage;
+
+class OrderShipped extends Notification
+{
+    public function __construct(public Order $order) {}
+
+    public function via($notifiable): array
+    {
+        return ['transmitsms'];
+    }
+
+    public function toTransmitSms($notifiable): TransmitSmsMessage
+    {
+        return TransmitSmsMessage::create("Your order #{$this->order->id} has shipped!")
+            ->from('MYSTORE')
+            ->onDlr(UpdateOrderSmsStatusJob::class, [
+                'order_id' => $this->order->id,
+            ])
+            ->onReply(ProcessCustomerReplyJob::class, [
+                'order_id' => $this->order->id,
+                'customer_id' => $notifiable->id,
+            ]);
+    }
+}
+```
+
+### Creating Handler Jobs
+
+**DLR Handler Job:**
+
+```php
+namespace App\Jobs;
+
+use App\Models\Order;
+use ExpertSystems\TransmitSms\Data\DlrCallbackData;
+use ExpertSystems\TransmitSms\Laravel\Contracts\HandlesDlrCallback;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Queue\InteractsWithQueue;
+
+class UpdateOrderSmsStatusJob implements HandlesDlrCallback, ShouldQueue
+{
+    use InteractsWithQueue, Queueable;
+
+    public function __construct(
+        public DlrCallbackData $dlr,
+        public array $context,
+    ) {}
+
+    public function handle(): void
+    {
+        $order = Order::find($this->context['order_id']);
+
+        $order->update([
+            'sms_status' => $this->dlr->status,
+            'sms_delivered_at' => $this->dlr->isDelivered()
+                ? now()->parse($this->dlr->datetime)
+                : null,
+        ]);
+
+        if ($this->dlr->isFailed()) {
+            // Handle failure - maybe send email instead
+            Log::warning('SMS delivery failed', [
+                'order_id' => $order->id,
+                'error' => $this->dlr->errorDescription,
+            ]);
+        }
+    }
+}
+```
+
+**Reply Handler Job:**
+
+```php
+namespace App\Jobs;
+
+use App\Models\SmsConversation;
+use ExpertSystems\TransmitSms\Data\ReplyCallbackData;
+use ExpertSystems\TransmitSms\Laravel\Contracts\HandlesReplyCallback;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+
+class ProcessCustomerReplyJob implements HandlesReplyCallback, ShouldQueue
+{
+    use Queueable;
+
+    public function __construct(
+        public ReplyCallbackData $reply,
+        public array $context,
+    ) {}
+
+    public function handle(): void
+    {
+        SmsConversation::create([
+            'order_id' => $this->context['order_id'],
+            'customer_id' => $this->context['customer_id'],
+            'direction' => 'inbound',
+            'message' => $this->reply->message,
+            'mobile' => $this->reply->mobile,
+            'received_at' => $this->reply->receivedAt,
+        ]);
+    }
+}
+```
+
+**Link Hit Handler Job:**
+
+```php
+namespace App\Jobs;
+
+use ExpertSystems\TransmitSms\Data\LinkHitCallbackData;
+use ExpertSystems\TransmitSms\Laravel\Contracts\HandlesLinkHitCallback;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+
+class TrackLinkClickJob implements HandlesLinkHitCallback, ShouldQueue
+{
+    use Queueable;
+
+    public function __construct(
+        public LinkHitCallbackData $linkHit,
+        public array $context,
+    ) {}
+
+    public function handle(): void
+    {
+        LinkClick::create([
+            'campaign_id' => $this->context['campaign_id'],
+            'mobile' => $this->linkHit->mobile,
+            'url' => $this->linkHit->url,
+            'clicked_at' => $this->linkHit->clickedAt,
+        ]);
+    }
+}
+```
+
+### Global Event Listeners
+
+In addition to per-message handlers, you can listen to events for all callbacks:
+
+```php
+// App\Providers\EventServiceProvider.php
+use ExpertSystems\TransmitSms\Laravel\Events\DlrReceived;
+use ExpertSystems\TransmitSms\Laravel\Events\ReplyReceived;
+use ExpertSystems\TransmitSms\Laravel\Events\LinkHitReceived;
+
+protected $listen = [
+    DlrReceived::class => [
+        \App\Listeners\LogDlrCallback::class,
+    ],
+    ReplyReceived::class => [
+        \App\Listeners\LogReplyCallback::class,
+    ],
+    LinkHitReceived::class => [
+        \App\Listeners\LogLinkHitCallback::class,
+    ],
+];
+```
+
+Example listener:
+
+```php
+namespace App\Listeners;
+
+use ExpertSystems\TransmitSms\Laravel\Events\DlrReceived;
+use Illuminate\Support\Facades\Log;
+
+class LogDlrCallback
+{
+    public function handle(DlrReceived $event): void
+    {
+        Log::info('DLR callback received', [
+            'message_id' => $event->dlr->messageId,
+            'mobile' => $event->dlr->mobile,
+            'status' => $event->dlr->status,
+            'context' => $event->context,
+        ]);
+    }
+}
+```
+
+### Webhook Configuration
+
+The webhook routes are automatically registered. You can customize them in `config/transmitsms.php`:
+
+```php
+'webhooks' => [
+    // Enable/disable webhook routes
+    'enabled' => env('TRANSMITSMS_WEBHOOKS_ENABLED', true),
+
+    // Route prefix (e.g., /webhooks/transmitsms/dlr)
+    'prefix' => env('TRANSMITSMS_WEBHOOKS_PREFIX', 'webhooks/transmitsms'),
+
+    // Middleware for webhook routes
+    'middleware' => ['api'],
+
+    // Custom signing key (defaults to APP_KEY)
+    'signing_key' => env('TRANSMITSMS_SIGNING_KEY'),
+
+    // DLR callback settings
+    'dlr' => [
+        'enabled' => true,
+        'path' => 'dlr',
+        'queue' => env('TRANSMITSMS_DLR_QUEUE', 'default'),
+    ],
+
+    // Reply callback settings
+    'reply' => [
+        'enabled' => true,
+        'path' => 'reply',
+        'queue' => env('TRANSMITSMS_REPLY_QUEUE', 'default'),
+    ],
+
+    // Link hits callback settings
+    'link_hits' => [
+        'enabled' => true,
+        'path' => 'link-hits',
+        'queue' => env('TRANSMITSMS_LINK_HITS_QUEUE', 'default'),
+    ],
+],
+```
+
+### Callback Data Objects
+
+**DlrCallbackData** properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `messageId` | `int` | The message ID |
+| `mobile` | `string` | Recipient phone number |
+| `status` | `string` | Status: `delivered`, `failed`, `pending` |
+| `datetime` | `?string` | Delivery timestamp |
+| `senderId` | `?string` | Sender ID used |
+| `errorCode` | `?string` | Error code if failed |
+| `errorDescription` | `?string` | Error description |
+
+Helper methods: `isDelivered()`, `isFailed()`, `isPending()`
+
+**ReplyCallbackData** properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `messageId` | `int` | Original message ID |
+| `mobile` | `string` | Sender phone number |
+| `message` | `string` | Reply message text |
+| `receivedAt` | `string` | Timestamp when received |
+| `responseId` | `?int` | Reply ID |
+| `longcode` | `?string` | Number replied to |
+| `firstName` | `?string` | Sender first name |
+| `lastName` | `?string` | Sender last name |
+
+**LinkHitCallbackData** properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `messageId` | `int` | Message ID |
+| `mobile` | `string` | Recipient phone number |
+| `url` | `string` | URL that was clicked |
+| `clickedAt` | `string` | Click timestamp |
+| `userAgent` | `?string` | Browser user agent |
+| `ipAddress` | `?string` | IP address |
+
+### How It Works
+
+1. **Sending**: When you use `onDlr()`, `onReply()`, or `onLinkHit()`, the package builds a signed callback URL containing your handler class and context data.
+
+2. **Receiving**: When TransmitSMS calls the webhook, the package:
+   - Verifies the HMAC signature
+   - Parses the callback data into a DTO
+   - Dispatches a global event (for logging/monitoring)
+   - Dispatches your handler job with the data and context
+
+3. **Security**: The callback URL includes an HMAC signature to prevent tampering. Only callbacks with valid signatures are processed.
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Your App                                                           │
+│  ────────                                                           │
+│  TransmitSmsMessage::create('Hello')                               │
+│      ->onDlr(MyJob::class, ['id' => 1])                           │
+│                    │                                                │
+│                    ▼                                                │
+│  Package builds signed callback URL                                │
+│  https://app.com/webhooks/transmitsms/dlr?h=...&c=...&s=...       │
+└─────────────────────────────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  TransmitSMS                                                        │
+│  ───────────                                                        │
+│  Sends SMS → Receives DLR → Calls your webhook URL                 │
+└─────────────────────────────────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  Your App (Webhook)                                                 │
+│  ─────────────────                                                  │
+│  WebhookController:                                                │
+│    1. Verify signature ✓                                           │
+│    2. Parse DlrCallbackData                                        │
+│    3. Dispatch DlrReceived event                                   │
+│    4. Dispatch MyJob with data + context                           │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ## License

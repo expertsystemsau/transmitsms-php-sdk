@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace ExpertSystems\TransmitSms\Laravel\Notifications;
 
+use ExpertSystems\TransmitSms\Callbacks\CallbackType;
+use ExpertSystems\TransmitSms\Callbacks\CallbackUrlBuilder;
 use ExpertSystems\TransmitSms\Data\SmsData;
 use ExpertSystems\TransmitSms\Exceptions\TransmitSmsException;
 use ExpertSystems\TransmitSms\Exceptions\ValidationException;
@@ -15,7 +17,8 @@ use Illuminate\Support\Facades\Config;
 class TransmitSmsChannel
 {
     public function __construct(
-        protected TransmitSmsClient $client
+        protected TransmitSmsClient $client,
+        protected ?CallbackUrlBuilder $urlBuilder = null,
     ) {}
 
     /**
@@ -73,17 +76,9 @@ class TransmitSmsChannel
                 $request->trackedLinkUrl($message->getTrackedLinkUrl());
             }
 
-            if ($message->getDlrCallback() !== null) {
-                $request->dlrCallback($message->getDlrCallback());
-            }
+            // Apply callback URLs - handlers take precedence over explicit URLs
+            $this->applyCallbackUrls($request, $message);
 
-            if ($message->getReplyCallback() !== null) {
-                $request->replyCallback($message->getReplyCallback());
-            }
-
-            if ($message->getLinkHitsCallback() !== null) {
-                $request->linkHitsCallback($message->getLinkHitsCallback());
-            }
         } catch (ValidationException $e) {
             // Re-throw validation errors as TransmitSmsException for consistent error handling
             throw new TransmitSmsException(
@@ -96,5 +91,53 @@ class TransmitSmsChannel
 
         // Send the request and return the DTO
         return $this->client->sms()->sendRequest($request);
+    }
+
+    /**
+     * Apply callback URLs to the request.
+     *
+     * If a handler is specified (via onDlr, onReply, onLinkHit), a signed URL
+     * is generated. Otherwise, the explicit callback URL is used if set.
+     */
+    protected function applyCallbackUrls(SendSmsRequest $request, TransmitSmsMessage $message): void
+    {
+        // DLR callback
+        if ($message->getDlrHandler() !== null && $this->urlBuilder !== null) {
+            $request->dlrCallback(
+                $this->urlBuilder->build(
+                    CallbackType::DLR,
+                    $message->getDlrHandler(),
+                    $message->getDlrContext()
+                )
+            );
+        } elseif ($message->getDlrCallback() !== null) {
+            $request->dlrCallback($message->getDlrCallback());
+        }
+
+        // Reply callback
+        if ($message->getReplyHandler() !== null && $this->urlBuilder !== null) {
+            $request->replyCallback(
+                $this->urlBuilder->build(
+                    CallbackType::REPLY,
+                    $message->getReplyHandler(),
+                    $message->getReplyContext()
+                )
+            );
+        } elseif ($message->getReplyCallback() !== null) {
+            $request->replyCallback($message->getReplyCallback());
+        }
+
+        // Link hits callback
+        if ($message->getLinkHitHandler() !== null && $this->urlBuilder !== null) {
+            $request->linkHitsCallback(
+                $this->urlBuilder->build(
+                    CallbackType::LINK_HITS,
+                    $message->getLinkHitHandler(),
+                    $message->getLinkHitContext()
+                )
+            );
+        } elseif ($message->getLinkHitsCallback() !== null) {
+            $request->linkHitsCallback($message->getLinkHitsCallback());
+        }
     }
 }

@@ -28,9 +28,59 @@ class TransmitSmsMessage
 
     protected ?string $linkHitsCallback = null;
 
+    /**
+     * Handler class for DLR callbacks.
+     *
+     * @var class-string|null
+     */
+    protected ?string $dlrHandler = null;
+
+    /**
+     * Context data for DLR handler.
+     *
+     * @var array<string, mixed>
+     */
+    protected array $dlrContext = [];
+
+    /**
+     * Handler class for Reply callbacks.
+     *
+     * @var class-string|null
+     */
+    protected ?string $replyHandler = null;
+
+    /**
+     * Context data for Reply handler.
+     *
+     * @var array<string, mixed>
+     */
+    protected array $replyContext = [];
+
+    /**
+     * Handler class for Link Hit callbacks.
+     *
+     * @var class-string|null
+     */
+    protected ?string $linkHitHandler = null;
+
+    /**
+     * Context data for Link Hit handler.
+     *
+     * @var array<string, mixed>
+     */
+    protected array $linkHitContext = [];
+
     public function __construct(string $content = '')
     {
         $this->content = $content;
+    }
+
+    /**
+     * Create a new message instance.
+     */
+    public static function create(string $content = ''): self
+    {
+        return new self($content);
     }
 
     /**
@@ -115,6 +165,9 @@ class TransmitSmsMessage
 
     /**
      * Set the delivery receipt callback URL.
+     *
+     * Note: If you use onDlr() to register a handler, the URL will be
+     * automatically generated and this value will be ignored.
      */
     public function dlrCallback(string $dlrCallback): self
     {
@@ -125,6 +178,9 @@ class TransmitSmsMessage
 
     /**
      * Set the reply callback URL.
+     *
+     * Note: If you use onReply() to register a handler, the URL will be
+     * automatically generated and this value will be ignored.
      */
     public function replyCallback(string $replyCallback): self
     {
@@ -135,10 +191,83 @@ class TransmitSmsMessage
 
     /**
      * Set the link hits callback URL.
+     *
+     * Note: If you use onLinkHit() to register a handler, the URL will be
+     * automatically generated and this value will be ignored.
      */
     public function linkHitsCallback(string $linkHitsCallback): self
     {
         $this->linkHitsCallback = $linkHitsCallback;
+
+        return $this;
+    }
+
+    /**
+     * Register a job to handle DLR (Delivery Receipt) callbacks.
+     *
+     * When the delivery receipt is received from TransmitSMS, the specified
+     * job will be dispatched with the DLR data and context.
+     *
+     * Example:
+     * ```php
+     * TransmitSmsMessage::create('Your order has shipped!')
+     *     ->onDlr(UpdateOrderStatusJob::class, ['order_id' => 123]);
+     * ```
+     *
+     * @param  class-string  $handler  Job class implementing HandlesDlrCallback
+     * @param  array<string, mixed>  $context  Context data to pass to the job
+     */
+    public function onDlr(string $handler, array $context = []): self
+    {
+        $this->dlrHandler = $handler;
+        $this->dlrContext = $context;
+
+        return $this;
+    }
+
+    /**
+     * Register a job to handle Reply callbacks.
+     *
+     * When a reply is received from the recipient, the specified job will
+     * be dispatched with the reply data and context.
+     *
+     * Example:
+     * ```php
+     * TransmitSmsMessage::create('Reply YES to confirm')
+     *     ->onReply(ProcessReplyJob::class, ['order_id' => 123]);
+     * ```
+     *
+     * @param  class-string  $handler  Job class implementing HandlesReplyCallback
+     * @param  array<string, mixed>  $context  Context data to pass to the job
+     */
+    public function onReply(string $handler, array $context = []): self
+    {
+        $this->replyHandler = $handler;
+        $this->replyContext = $context;
+
+        return $this;
+    }
+
+    /**
+     * Register a job to handle Link Hit callbacks.
+     *
+     * When the recipient clicks a tracked link in the message, the specified
+     * job will be dispatched with the link hit data and context.
+     *
+     * Example:
+     * ```php
+     * TransmitSmsMessage::create('Check out our sale: [tracked-link]')
+     *     ->trackedLinkUrl('https://example.com/sale')
+     *     ->onLinkHit(TrackClickJob::class, ['campaign_id' => 456]);
+     * ```
+     *
+     * @param  class-string  $handler  Job class implementing HandlesLinkHitCallback
+     * @param  array<string, mixed>  $context  Context data to pass to the job
+     */
+    public function onLinkHit(string $handler, array $context = []): self
+    {
+        $this->linkHitHandler = $handler;
+        $this->linkHitContext = $context;
 
         return $this;
     }
@@ -229,5 +358,75 @@ class TransmitSmsMessage
     public function getLinkHitsCallback(): ?string
     {
         return $this->linkHitsCallback;
+    }
+
+    /**
+     * Get the DLR handler class.
+     *
+     * @return class-string|null
+     */
+    public function getDlrHandler(): ?string
+    {
+        return $this->dlrHandler;
+    }
+
+    /**
+     * Get the DLR handler context.
+     *
+     * @return array<string, mixed>
+     */
+    public function getDlrContext(): array
+    {
+        return $this->dlrContext;
+    }
+
+    /**
+     * Get the Reply handler class.
+     *
+     * @return class-string|null
+     */
+    public function getReplyHandler(): ?string
+    {
+        return $this->replyHandler;
+    }
+
+    /**
+     * Get the Reply handler context.
+     *
+     * @return array<string, mixed>
+     */
+    public function getReplyContext(): array
+    {
+        return $this->replyContext;
+    }
+
+    /**
+     * Get the Link Hit handler class.
+     *
+     * @return class-string|null
+     */
+    public function getLinkHitHandler(): ?string
+    {
+        return $this->linkHitHandler;
+    }
+
+    /**
+     * Get the Link Hit handler context.
+     *
+     * @return array<string, mixed>
+     */
+    public function getLinkHitContext(): array
+    {
+        return $this->linkHitContext;
+    }
+
+    /**
+     * Check if any callback handlers are configured.
+     */
+    public function hasCallbackHandlers(): bool
+    {
+        return $this->dlrHandler !== null
+            || $this->replyHandler !== null
+            || $this->linkHitHandler !== null;
     }
 }
