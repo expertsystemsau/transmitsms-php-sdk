@@ -146,7 +146,7 @@ class TransmitSmsServiceProvider extends ServiceProvider
 
         if (empty($appKey)) {
             throw new \RuntimeException(
-                'TransmitSMS webhook signing key is not configured. ' .
+                'TransmitSMS webhook signing key is not configured. '.
                 'Set TRANSMITSMS_SIGNING_KEY in your .env file or ensure APP_KEY is set.'
             );
         }
