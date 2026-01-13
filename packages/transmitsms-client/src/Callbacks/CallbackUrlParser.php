@@ -67,7 +67,7 @@ class CallbackUrlParser
      */
     public function verify(string $handler, string $context, string $signature): bool
     {
-        $expectedSignature = hash_hmac('sha256', $handler . $context, $this->signingKey);
+        $expectedSignature = hash_hmac('sha256', $handler.$context, $this->signingKey);
 
         return hash_equals($expectedSignature, $signature);
     }

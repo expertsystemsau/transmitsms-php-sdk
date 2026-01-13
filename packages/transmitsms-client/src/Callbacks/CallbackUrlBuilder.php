@@ -39,7 +39,7 @@ class CallbackUrlBuilder
         ?string $handler = null,
         array $context = [],
     ): string {
-        $url = rtrim($this->baseUrl, '/') . '/' . $type->path();
+        $url = rtrim($this->baseUrl, '/').'/'.$type->path();
 
         // If no handler specified, return base URL (events-only mode)
         if ($handler === null && empty($context)) {
@@ -57,9 +57,9 @@ class CallbackUrlBuilder
         }
 
         // Generate signature over handler + context
-        $params['s'] = $this->sign(($params['h'] ?? '') . ($params['c'] ?? ''));
+        $params['s'] = $this->sign(($params['h'] ?? '').($params['c'] ?? ''));
 
-        return $url . '?' . http_build_query($params);
+        return $url.'?'.http_build_query($params);
     }
 
     /**

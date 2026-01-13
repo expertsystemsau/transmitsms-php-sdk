@@ -51,7 +51,7 @@ final readonly class ReplyCallbackData
             return null;
         }
 
-        return trim(($this->firstName ?? '') . ' ' . ($this->lastName ?? ''));
+        return trim(($this->firstName ?? '').' '.($this->lastName ?? ''));
     }
 
     /**
