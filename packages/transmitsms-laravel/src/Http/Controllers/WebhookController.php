@@ -50,13 +50,15 @@ class WebhookController extends Controller
 
         // Dispatch handler job if specified
         if ($parsed['handler'] !== null) {
-            $this->dispatchHandler(
+            if (! $this->dispatchHandler(
                 $parsed['handler'],
                 $dlr,
                 $parsed['context'],
                 config('transmitsms.webhooks.dlr.queue', 'default'),
                 HandlesDlrCallback::class
-            );
+            )) {
+                return response('Handler dispatch failed', 500);
+            }
         }
 
         return response('OK', 200);
@@ -81,13 +83,15 @@ class WebhookController extends Controller
 
         // Dispatch handler job if specified
         if ($parsed['handler'] !== null) {
-            $this->dispatchHandler(
+            if (! $this->dispatchHandler(
                 $parsed['handler'],
                 $reply,
                 $parsed['context'],
                 config('transmitsms.webhooks.reply.queue', 'default'),
                 HandlesReplyCallback::class
-            );
+            )) {
+                return response('Handler dispatch failed', 500);
+            }
         }
 
         return response('OK', 200);
@@ -112,13 +116,15 @@ class WebhookController extends Controller
 
         // Dispatch handler job if specified
         if ($parsed['handler'] !== null) {
-            $this->dispatchHandler(
+            if (! $this->dispatchHandler(
                 $parsed['handler'],
                 $linkHit,
                 $parsed['context'],
                 config('transmitsms.webhooks.link_hits.queue', 'default'),
                 HandlesLinkHitCallback::class
-            );
+            )) {
+                return response('Handler dispatch failed', 500);
+            }
         }
 
         return response('OK', 200);
@@ -130,6 +136,7 @@ class WebhookController extends Controller
      * @param  class-string  $handlerClass
      * @param  array<string, mixed>  $context
      * @param  class-string  $expectedInterface
+     * @return bool True if handler was dispatched successfully, false on validation failure
      */
     protected function dispatchHandler(
         string $handlerClass,
@@ -137,11 +144,11 @@ class WebhookController extends Controller
         array $context,
         string $queue,
         string $expectedInterface,
-    ): void {
+    ): bool {
         if (! class_exists($handlerClass)) {
             report(new \RuntimeException("TransmitSMS callback handler class not found: {$handlerClass}"));
 
-            return;
+            return false;
         }
 
         // Validate handler implements the expected interface
@@ -150,7 +157,7 @@ class WebhookController extends Controller
                 "TransmitSMS callback handler {$handlerClass} must implement {$expectedInterface}"
             ));
 
-            return;
+            return false;
         }
 
         // Instantiate the job with callback data and context
@@ -162,5 +169,7 @@ class WebhookController extends Controller
         }
 
         dispatch($job);
+
+        return true;
     }
 }
