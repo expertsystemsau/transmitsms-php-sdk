@@ -2,6 +2,15 @@
 
 All notable changes to `transmitsms-php-client` will be documented in this file.
 
+## v1.5.0 - 2026-01-13
+
+### What's Changed
+
+* Bump dependabot/fetch-metadata from 2.4.0 to 2.5.0 by @dependabot[bot] in https://github.com/expertsystemsau/transmitsms-php-sdk/pull/16
+* Add DLR and reply callbacks to Laravel package by @mitchello77 in https://github.com/expertsystemsau/transmitsms-php-sdk/pull/17
+
+**Full Changelog**: https://github.com/expertsystemsau/transmitsms-php-sdk/compare/v1.4.0...v1.5.0
+
 ## v1.4.0 - 2026-01-04
 
 ### What's Changed
