@@ -56,7 +56,8 @@ class TransmitSmsServiceProvider extends ServiceProvider
         // Register the callback URL builder
         $this->app->singleton(CallbackUrlBuilder::class, function ($app) {
             $prefix = $app['config']['transmitsms.webhooks.prefix'] ?? 'webhooks/transmitsms';
-            $baseUrl = $app['url']->to($prefix);
+            $appUrl = rtrim(config('app.url'), '/');
+            $baseUrl = $appUrl . '/' . ltrim($prefix, '/');
             $signingKey = $this->getSigningKey($app);
 
             return new CallbackUrlBuilder($baseUrl, $signingKey);
