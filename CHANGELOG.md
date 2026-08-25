@@ -2,6 +2,88 @@
 
 All notable changes to `kudosity-php-client` will be documented in this file.
 
+## 2.4.0 - 2026-08-25
+
+Correlation on the SMS notification channel, and three silent-drop defects around
+phone numbers and link tracking. **Minor, not patch** — two changes reject input
+that 2.3 accepted, and one moves a message between APIs.
+
+### ⚠️ Behaviour changes
+
+- **`trackedLinkUrl()` now routes an SMS notification to V1.** It was absent from
+  `KudosityMessage::v1OnlyOptions()`, so a message setting it routed to V2 — which
+  has no `[tracked-link]` placeholder to substitute into. The body reached the
+  handset with the literal `[tracked-link]` in it and the URL nowhere at all.
+  V1 is the only API with the mechanism, so that is where such a message goes.
+  A message combining it with `forceV2()` now throws.
+
+- **`PhoneNumber::toInternational()` refuses unparseable input** instead of
+  formatting it. Its return type could not express failure, so it manufactured
+  plausible-looking numbers: `abc123` with a country of `AU` came back as
+  `61123`, and the caller then read an API error naming a number they never
+  wrote. It now throws `InvalidArgumentException` when the input carries no
+  digits, or when the formatted result fails its own `isValid()`.
+
+  A **leading `+` is now honoured as "already international"** and is never
+  re-prefixed. This is the one that mattered: `+447911123456` on an account
+  configured for AU became `61447911123456` — fourteen digits, which `isValid()`
+  accepts. A well-formed number for the wrong country is a wrong send, not a
+  failed one.
+
+  The guard is deliberately **not** a national-format oracle. Short codes and
+  local formats the API delivers happily are still accepted, because a false
+  rejection is a message that never goes out.
+
+### Added
+
+- **`KudosityMessage::messageRef()`** — the correlation key on the SMS
+  notification channel. `sendViaV2()` hardcoded `messageRef: null`, so the
+  `kudosity` channel was the only V2 surface in the package where a send could
+  not be correlated: `SignedMessageRef` had nothing to sign, and the inbound
+  listener both READMEs document read `null` on every reply. MMS, WhatsApp and
+  RCS have carried a ref since 2.0.
+
+- **`KudosityMessage::trackLinks()`** — V2's link shortening, a boolean over the
+  URLs already in the body. `sendViaV2()` previously derived it from
+  `getTrackedLinkUrl() !== null`, conflating two different mechanisms.
+
+- Both are **V2-only**: set either on a message that routes to V1 and
+  `apiVersion()` throws, naming every option that forced V1. The mirror of the
+  existing `forceV2()` throw, and for the same reason — a dropped `message_ref`
+  is a send that succeeds and then produces webhooks nobody can correlate.
+
+### Fixed
+
+- **`countryCode()` and `formatNumbers()` are honoured on the V2 route.** Neither
+  was in `v1OnlyOptions()`, so a message setting them routed to V2 and was sent
+  raw. `POST /v2/sms` accepts a local number but resolves the country
+  **server-side against the account** — so the caller named a country, the SDK
+  discarded it, and the API guessed. The condition now mirrors the V1 request's
+  exactly.
+
+- **`KUDOSITY_COUNTRY_CODE` is wired into the V1 connector.** The key was
+  published and documented from 2.0 and read by nothing: `KudosityServiceProvider`
+  called `setDefaultFrom()` and never `setDefaultCountryCode()`, so
+  `bulk()->formatNumberLocal()` fell back to "no country" and normalised nothing.
+
+- **V2 SMS and MMS normalise the recipient** the way WhatsApp and RCS always
+  have — punctuation stripped, any leading zero left for the API to resolve. The
+  same stored number no longer behaves differently depending on which channel a
+  notification uses.
+
+- **`UPGRADING.md`'s environment variable table** said `TRANSMITSMS_BASE_URL` →
+  `KUDOSITY_BASE_URL`. There is no such variable: the config reads
+  `KUDOSITY_BASE_URL_V1` and `KUDOSITY_BASE_URL_V2`. A `KUDOSITY_BASE_URL` in an
+  `.env` is read by nothing — it does not throw, V1 silently falls back to the
+  default host. The codemod always rewrote this correctly; only a hand migration
+  could get it wrong. The new variables added in 2.x are now listed too.
+
+- Both READMEs now lead with V2 and move the V1 surface after it. The Laravel
+  package README described V2 as "upcoming", and its webhook example guarded on
+  `isCorrelated()` before routing on `messageRef()` — which reports whether
+  Kudosity attached a `last_message`, not whether that message carried a ref, so
+  the guard passed and the route ran on `null`.
+
 ## 2.3.0 - 2026-08-10
 
 Idempotent V2 webhook registration. The failure this addresses is **drift, not

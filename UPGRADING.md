@@ -182,7 +182,7 @@ Every environment variable is renamed with the same `TRANSMITSMS_` →
 |---|---|
 | `TRANSMITSMS_API_KEY` | `KUDOSITY_API_KEY` |
 | `TRANSMITSMS_API_SECRET` | `KUDOSITY_API_SECRET` |
-| `TRANSMITSMS_BASE_URL` | `KUDOSITY_BASE_URL` |
+| `TRANSMITSMS_BASE_URL` | **`KUDOSITY_BASE_URL_V1`** — see below |
 | `TRANSMITSMS_TIMEOUT` | `KUDOSITY_TIMEOUT` |
 | `TRANSMITSMS_FROM` | `KUDOSITY_FROM` |
 | `TRANSMITSMS_WEBHOOKS_ENABLED` | `KUDOSITY_WEBHOOKS_ENABLED` |
@@ -191,6 +191,26 @@ Every environment variable is renamed with the same `TRANSMITSMS_` →
 | `TRANSMITSMS_DLR_QUEUE` | `KUDOSITY_DLR_QUEUE` |
 | `TRANSMITSMS_REPLY_QUEUE` | `KUDOSITY_REPLY_QUEUE` |
 | `TRANSMITSMS_LINK_HITS_QUEUE` | `KUDOSITY_LINK_HITS_QUEUE` |
+
+**The base URL is the one exception to the prefix swap.** There is no
+`KUDOSITY_BASE_URL` — the config reads `KUDOSITY_BASE_URL_V1` and
+`KUDOSITY_BASE_URL_V2`, because Kudosity runs two APIs on two hostnames. A
+`KUDOSITY_BASE_URL` left in an `.env` is **read by nothing**: it does not throw,
+it is simply ignored, and V1 silently falls back to `api.transmitsms.com`. If you
+were pointing V1 at a non-default host, that host quietly stops being used. The
+codemod rewrites this correctly; only a hand migration can get it wrong.
+
+These have no 1.x equivalent and are new in 2.x:
+
+| 2.x | Purpose |
+|---|---|
+| `KUDOSITY_BASE_URL_V2` | The V2 hostname; defaults to `api.transmitmessage.com` |
+| `KUDOSITY_COUNTRY_CODE` | Country the offline helpers normalise local numbers against. Leave unset to require international format — the SDK never guesses |
+| `KUDOSITY_MMS_SENDER` | MMS sender; an alphanumeric SMS sender ID is not valid for MMS |
+| `KUDOSITY_WHATSAPP_SENDER` | Registered WhatsApp Business number. Unset means the account default applies |
+| `KUDOSITY_RCS_AGENT_ID` | A registered agent ID, never a phone number |
+| `KUDOSITY_WEBHOOKS_EVENTS_ENABLED` | Whether the V2 receiver route is registered |
+| `KUDOSITY_WEBHOOKS_EVENTS_PATH` | Path of the V2 receiver, appended to the webhook prefix |
 
 `KUDOSITY_WEBHOOKS_PREFIX` defaults to `webhooks/kudosity` (was
 `webhooks/transmitsms`), so any webhook URL you've already registered with

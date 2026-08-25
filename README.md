@@ -110,31 +110,67 @@ ID recipients see. It can be:
 
 ### Core Client (Plain PHP)
 
-The client is resource-based. `$client->sms()` is Kudosity's V2 endpoint
-(`POST /v2/sms`), which cannot do multiple recipients, contact lists, or
-scheduling — those sends stay on `$client->bulk()` (V1) instead.
-`$client->mms()`, `$client->whatsapp()` and `$client->rcs()` cover the other
-three V2 channels — see [V2 channels](packages/kudosity-client/README.md#v2-channels)
-in the client package README for the full method list and response
-envelopes. `$client->webhooks()` manages account-level webhooks, which is how
-delivery receipts and replies arrive for V2 sends — V2 has no per-send callback
-URL, so [migrating a send](UPGRADING.md#your-v1-callbacks-do-not-fire-for-v2-sends)
-without registering one silently loses its callbacks. `$client->senders()` reads
-sender registrations and runs the SMS verification flow. Account operations live
-on `$client->account()`, reporting on `$client->reporting()`, and so on.
+The client is resource-based, and **V2 is where new work belongs**. Its four
+messaging channels — `sms()`, `mms()`, `whatsapp()` and `rcs()` — each take a
+single recipient and send immediately. See
+[V2 channels](packages/kudosity-client/README.md#v2-channels) in the client
+package README for the full method list and the per-endpoint response envelope
+table.
 
 ```php
 use ExpertSystems\Kudosity\KudosityClient;
-use ExpertSystems\Kudosity\Requests\SendSmsRequest;
+use ExpertSystems\Kudosity\Enums\WebhookEventType;
 
 $client = new KudosityClient('api-key', 'api-secret');
 
-// Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-$sms = $client->bulk()->send('Hello from Kudosity!', '+61491570006');
-$messageId = $sms->messageId;
+// One recipient, sent now. message_ref is your correlation key — it comes back
+// on every webhook this message produces, and it is the only one V2 offers.
+$sms = $client->sms()->send(
+    'Hello from Kudosity!',
+    to: '61491570006',
+    from: '61491570017',
+    messageRef: 'order-9931:cust-4471',
+);
+$sms->id;      // the UUID webhook events match against
+$sms->status;  // MessageStatus enum
 
-// Send to multiple recipients (comma-separated, up to 500)
-$client->bulk()->send('Bulk message', '+61491570006,+61491570007');
+$client->mms()->send('61491570006', '61491570017', ['https://example.com/product.jpg']);
+$client->whatsapp()->text('Hi from WhatsApp!', '61491570010');
+$client->rcs()->send('Hi from RCS!', '61491570010', 'DemoSender');   // an AGENT ID, not a number
+
+// Read one back, or list with filters
+$client->sms()->get($sms->id);
+$client->sms()->list(messageRef: 'order-9931:cust-4471');
+```
+
+**V2 has no per-send callback URL.** Delivery receipts, replies, link hits and
+opt-outs all arrive through one account-level webhook, so a send migrated from
+`bulk()` to `sms()` without registering one
+[silently stops reporting](UPGRADING.md#your-v1-callbacks-do-not-fire-for-v2-sends):
+
+```php
+$client->webhooks()->ensure(
+    name: 'Production events',
+    url: 'https://your-app.example.com/webhooks/kudosity/v2',
+    eventTypes: [WebhookEventType::SmsStatus, WebhookEventType::SmsInbound],
+);
+```
+
+`$client->senders()` reads sender registrations and runs the SMS verification
+flow.
+
+#### The V1 surface
+
+V1 covers everything V2 cannot express — **contact lists, multi-recipient sends,
+scheduling, validity windows, per-send callbacks and reporting** — and it is not
+deprecated. Use it when you need one of those, not by default.
+
+```php
+use ExpertSystems\Kudosity\Requests\SendSmsRequest;
+
+// Multiple recipients (comma-separated, up to 500), or a contact list
+$sms = $client->bulk()->send('Bulk message', '+61491570006,+61491570007');
+$messageId = $sms->messageId;
 
 // Extra options (replies-to-email, callbacks, scheduling, validity) — pass a
 // configure closure. Connector defaults still apply, unlike sendRequest().
@@ -149,22 +185,11 @@ $request = (new SendSmsRequest('Scheduled message'))
     ->scheduledAt('2026-12-25 09:00:00');
 $client->bulk()->sendRequest($request);
 
-// Check a message's status / delivery stats
+// Reporting and account operations are V1 only
 $message = $client->reporting()->getMessage($messageId);
 $stats = $client->reporting()->getStats($messageId);
-
-// Get account balance
-$balance = $client->account()->getBalance();
-
-// Get SMS replies (responses)
 $replies = $client->reporting()->getAllResponses();
-
-// V2 channels — single recipient, no scheduling. See the client package
-// README's "V2 channels" section for the response envelope table.
-$client->sms()->send('Hi from V2!', '61491570006', '61491570017');
-$client->mms()->send('61491570006', '61491570017', ['https://example.com/product.jpg']);
-$client->whatsapp()->text('Hi from WhatsApp!', '61491570010');
-$client->rcs()->send('Hi from RCS!', '61491570010', 'DemoSender');
+$balance = $client->account()->getBalance();
 ```
 
 ### Pagination
@@ -204,14 +229,13 @@ The facade proxies to the same resources as the core client.
 ```php
 use ExpertSystems\Kudosity\Laravel\Facades\Kudosity;
 
-// Send an SMS via V1 bulk() — multiple recipients, contact lists and
-// scheduling all live here, not on sms() (see "Core Client" above)
-Kudosity::bulk()->send('Hello from Laravel!', '+61491570006');
+// V2 — one recipient, sent now
+Kudosity::sms()->send('Hi from Kudosity!', '61491570006', '61491570017');
 
-// V2 single-recipient SMS
-Kudosity::sms()->send('Hi from V2!', '61491570006', '61491570017');
+// V1 — multiple recipients, contact lists and scheduling live here
+Kudosity::bulk()->send('Hello from Laravel!', '+61491570006,+61491570007');
 
-// Get account balance
+// Reporting and account operations are V1 only
 $balance = Kudosity::account()->getBalance();
 ```
 

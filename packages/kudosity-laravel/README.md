@@ -56,19 +56,27 @@ recipients see. It can be:
 
 ### Facade
 
-The facade proxies to the resource-based client. V1's single-recipient `sms()`
-name is reserved for Kudosity's upcoming V2 endpoint, which can't do multiple
-recipients, contact lists, or scheduling — so those sends live on `bulk()`
-instead. Account operations live on `account()`, reporting on `reporting()`,
-and so on.
+The facade proxies to the resource-based client, and **V2 is where new work
+belongs**. `sms()`, `mms()`, `whatsapp()` and `rcs()` are the four V2 channels:
+one recipient each, sent immediately. `webhooks()` manages the account-level
+webhook that delivery receipts and replies arrive through, and `senders()` reads
+sender registrations.
+
+V1 is not deprecated — it covers everything V2 cannot express. Contact lists,
+multi-recipient sends, scheduling and validity windows live on `bulk()`;
+reporting and account operations are V1 only.
 
 ```php
 use ExpertSystems\Kudosity\Laravel\Facades\Kudosity;
 
-// Send an SMS — send(string $message, string $to, ?string $from = null, ?callable $configure = null)
-Kudosity::bulk()->send('Hello from Laravel!', '+61491570006');
+// V2 — one recipient, sent now. message_ref is your correlation key.
+Kudosity::sms()->send('Hello from Laravel!', '61491570006', '61491570017', messageRef: 'order-9931');
+Kudosity::whatsapp()->text('Hi from WhatsApp!', '61491570010');
 
-// Get account balance
+// V1 — multiple recipients, contact lists, scheduling
+Kudosity::bulk()->send('Hello!', '+61491570006,+61491570007');
+
+// Reporting and account operations are V1 only
 $balance = Kudosity::account()->getBalance();
 ```
 
@@ -122,13 +130,48 @@ $user->notify(new OrderShipped());
 ```php
 KudosityMessage::create('Your order has shipped!')
     ->from('MyStore')                         // sender ID (else config/default)
-    ->countryCode('AU')                       // normalise local numbers
-    ->formatNumbers()                         // format numbers to E.164 client-side
+    ->countryCode('AU')                       // normalise local numbers…
+    ->formatNumbers();                        // …when this asks it to
+```
+
+Several options exist on only one of the two APIs, and the builder refuses to
+drop one silently rather than sending a message that is quietly not what you
+asked for:
+
+```php
+// V1-only — setting any of these routes the whole message to V1
     ->validity(60)                            // minutes to attempt delivery
     ->sendAt('2026-12-25 09:00:00')           // schedule
     ->repliesToEmail('inbox@example.com')     // route replies to an email
-    ->trackedLinkUrl('https://example.com');  // [tracked-link] target
+    ->trackedLinkUrl('https://example.com')   // the [tracked-link] target
+
+// V2-only — setting either of these on a message that routes to V1 THROWS
+    ->messageRef('order-9931:cust-4471')      // your correlation key
+    ->trackLinks()                            // shorten the URLs in the body
 ```
+
+`trackedLinkUrl()` and `trackLinks()` are **not** two spellings of one feature.
+V1 substitutes `tracked_link_url` into a `[tracked-link]` placeholder in the
+body; V2's `track_links` is a boolean that shortens URLs already written into
+the message. Setting both is asking for two APIs at once, and throws.
+
+### Number formatting
+
+`countryCode()` and `formatNumbers()` work on both APIs and must be set
+together — a country alone normalises nothing, and `formatNumbers()` alone has
+no country to normalise against. That pairing is deliberate: **the SDK never
+guesses a country**, because guessing wrong sends a real message to a real
+stranger rather than failing.
+
+Without them the recipient is passed through with punctuation stripped and any
+leading zero left intact, for the API to accept or reject on its own terms.
+`POST /v2/sms` does accept a local number — but it resolves the country against
+*your account*, so on an account sending across borders the country you did not
+name is the country you do not get.
+
+An unparseable recipient is now refused rather than formatted into something
+plausible: `PhoneNumber::toInternational()` throws instead of turning `abc123`
+into `61123`. Through a notification that surfaces as a `KudosityException`.
 
 To send to a Kudosity contact list instead of the notifiable's number, use
 `toList()` — the resolved recipient is then ignored:
@@ -199,7 +242,13 @@ V2 by default. V1 only when the message uses something V2 cannot express:
 | `validity()`, `repliesToEmail()` | V1-only options |
 | `dlrCallback()`, `replyCallback()`, `linkHitsCallback()` | **V2 has no per-send callback URL at all** |
 | `onDlr()`, `onReply()`, `onLinkHit()` | the handler forms become those same callbacks |
+| `trackedLinkUrl()` | V1 substitutes it into `[tracked-link]`; V2 has no placeholder to substitute into |
 | more than one recipient in `to()` | `POST /v2/sms` takes exactly one |
+
+The decision runs the other way too. `messageRef()` and `trackLinks()` exist
+only on V2, so a message setting either **and** routing to V1 throws rather than
+sending without it — a dropped `message_ref` is a send that succeeds and then
+produces webhooks nobody can correlate, which is a silence rather than an error.
 
 The decision is inspectable rather than magic:
 
@@ -258,11 +307,16 @@ Event::listen(KudosityStatusReceived::class, function (KudosityStatusReceived $e
 Event::listen(KudosityInboundReceived::class, function (KudosityInboundReceived $e) {
     // Route on the ref, never the number. And $e->inbound->sender is the
     // CUSTOMER; $e->inbound->recipient is your own number.
-    if (! $e->inbound->isCorrelated()) {
-        return;   // unsolicited: no ref, no authenticity signal
+    //
+    // Guard on the ref itself, NOT on isCorrelated(): that reports whether
+    // Kudosity attached a last_message, which it does whenever it finds a recent
+    // outbound to the number — with or without a message_ref on it. A message
+    // sent without one passes isCorrelated() and then routes on null.
+    if (($ref = $e->inbound->messageRef()) === null) {
+        return;   // nothing to correlate against
     }
 
-    $this->route($e->inbound->messageRef(), $e->inbound->message);
+    $this->route($ref, $e->inbound->message);
 });
 ```
 
@@ -280,6 +334,30 @@ URL rather than you writing it by hand.
 To establish that a delivery refers to one of *your* entities, sign the
 `message_ref` on the way out and verify it on the way in with
 `Webhooks\SignedMessageRef`. That protects **correlation, not the payload**.
+
+```php
+use ExpertSystems\Kudosity\Webhooks\SignedMessageRef;
+
+// On the way out — messageRef() is V2-only, so a message that routes to V1
+// throws here rather than sending without the key.
+public function toKudosity($notifiable): KudosityMessage
+{
+    return KudosityMessage::create('Your order has shipped!')
+        ->messageRef(SignedMessageRef::sign("order-{$this->order->id}", config('kudosity.signing_key')));
+}
+
+// On the way in
+Event::listen(KudosityStatusReceived::class, function (KudosityStatusReceived $e) {
+    $entity = SignedMessageRef::verify($e->status->messageRef, config('kudosity.signing_key'));
+
+    if ($entity === null) {
+        return;   // unsigned, forged, or for another system
+    }
+});
+```
+
+Parsing splits on the **last** colon, so composite refs survive. Max 500
+characters, enforced before the request leaves the process.
 
 ## Artisan commands
 
@@ -353,7 +431,19 @@ receiver will be delivered events for messages the others sent. Write listeners
 that treat an unrecognised `message_ref` as ordinary rather than an error worth
 alerting on.
 
-## DLR & Reply Callbacks
+## DLR & Reply Callbacks (V1)
+
+> **This is the V1 mechanism, and using it routes your message to V1.**
+> `onDlr()`, `onReply()` and `onLinkHit()` become per-send callback URLs, which
+> `POST /v2/sms` has no room for — so a notification using any of them is sent
+> over V1 in full, with V1's auth, host and response shape.
+>
+> For new work prefer the account-level webhook receiver documented under
+> [Receiving V2 webhooks](#receiving-v2-webhooks) above: one registration serves
+> every channel, and correlation runs on `messageRef()` rather than on a job
+> bound to a single send. This section remains fully supported and is the right
+> choice when you are already on V1 for another reason — a list send, a schedule
+> — or when per-send handler context is genuinely what you want.
 
 The package provides automatic handling for DLR (Delivery Receipt), Reply, and Link Hit callbacks. When you send an SMS, you can specify a job to be dispatched when a callback is received.
 
