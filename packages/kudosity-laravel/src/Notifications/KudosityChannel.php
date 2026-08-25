@@ -11,8 +11,10 @@ use ExpertSystems\Kudosity\Exceptions\KudosityException;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use ExpertSystems\Kudosity\KudosityClient;
 use ExpertSystems\Kudosity\Requests\SendSmsRequest;
+use ExpertSystems\Kudosity\Support\PhoneNumber;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Config;
+use InvalidArgumentException;
 
 class KudosityChannel
 {
@@ -68,6 +70,18 @@ class KudosityChannel
                 $e->getCode(),
                 $e,
                 $e->getErrorCode()
+            );
+        } catch (InvalidArgumentException $e) {
+            // PhoneNumber refuses a number it cannot parse rather than
+            // manufacturing one, and it throws the SPL exception rather than the
+            // SDK's own. Converting here keeps the channel's contract intact: a
+            // consumer catching KudosityException around a notification should not
+            // have to also catch an SPL type to cover a bad phone number.
+            throw new KudosityException(
+                $e->getMessage(),
+                $e->getCode(),
+                $e,
+                'FIELD_INVALID'
             );
         }
 
@@ -134,11 +148,20 @@ class KudosityChannel
      * Send over `POST /v2/sms`.
      *
      * Only reached for a message with no V1-only options, so nothing here needs to
-     * consider scheduling, lists, validity or callbacks — the routing decision has
-     * already established none are set. That is why this is short: the complexity
-     * lives in the decision, not the send.
+     * consider scheduling, lists, validity, callbacks or a tracked link URL — the
+     * routing decision has already established none are set. That is why this is
+     * short: the complexity lives in the decision, not the send.
+     *
+     * The two V2-only options do have to be carried through. `messageRef` is the
+     * correlation key every webhook this send produces will quote, and V2 offers
+     * no other way to attach one; `trackLinks` is V2's own link shortening, which
+     * is a boolean over the URLs already in the body rather than a placeholder
+     * substitution.
      *
      * @throws KudosityException
+     * @throws InvalidArgumentException If the recipient cannot be parsed — see
+     *                                  {@see self::resolveV2Recipient()}, caught
+     *                                  and rewrapped by the caller.
      */
     protected function sendViaV2(KudosityMessage $message, string $to): SentMessage
     {
@@ -146,11 +169,42 @@ class KudosityChannel
 
         return $this->client->sms()->send(
             message: $message->getContent(),
-            to: trim($to),
+            to: $this->resolveV2Recipient($message, $to),
             from: (string) $from,
-            messageRef: null,
-            trackLinks: $message->getTrackedLinkUrl() !== null,
+            messageRef: $message->getMessageRef(),
+            trackLinks: $message->getTrackLinks(),
         );
+    }
+
+    /**
+     * Normalise the recipient for a V2 send.
+     *
+     * `formatNumbers()` and `countryCode()` used to be dropped here: neither is
+     * in {@see KudosityMessage::v1OnlyOptions()}, so a message setting them
+     * routed to V2, which ignored them. `POST /v2/sms` accepts a local number and
+     * resolves the country **server-side, against the account** — so the effect
+     * was that the caller named a country, the SDK discarded it, and the API
+     * guessed. On a single-country account that is invisible; on any other it is
+     * the wrong country.
+     *
+     * The condition mirrors the V1 request's exactly (`SendSmsRequest`'s
+     * `$this->formatNumbers && $this->countryCode !== null`), so the same
+     * notification normalises the same way whichever API carries it. Without both
+     * the recipient is only trimmed, and the request strips punctuation from it —
+     * the SDK does not normalise a local number uninvited, because doing so means
+     * choosing a country on the caller's behalf.
+     *
+     * @throws InvalidArgumentException If the number cannot be parsed
+     */
+    protected function resolveV2Recipient(KudosityMessage $message, string $to): string
+    {
+        $countryCode = $message->getCountryCode();
+
+        if ($message->getFormatNumbers() && $countryCode !== null) {
+            return PhoneNumber::toInternational(trim($to), $countryCode);
+        }
+
+        return trim($to);
     }
 
     /**

@@ -37,7 +37,7 @@ class KudosityServiceProvider extends ServiceProvider
 
         // Register the V1 connector as a singleton
         $this->app->singleton(KudosityV1Connector::class, function ($app) {
-            /** @var array{api_key: string, api_secret: string, timeout: int, from: string} $config */
+            /** @var array{api_key: string, api_secret: string, timeout: int, from: string, country_code?: string|null} $config */
             $config = $app['config']['kudosity'];
 
             $connector = new KudosityV1Connector(
@@ -50,6 +50,15 @@ class KudosityServiceProvider extends ServiceProvider
             // Set default sender ID if configured
             if (! empty($config['from'])) {
                 $connector->setDefaultFrom($config['from']);
+            }
+
+            // And the country the offline helpers normalise against. Left unset
+            // this stays null, which is what makes them refuse to guess — see the
+            // key's own comment in config/kudosity.php. It was published and
+            // documented from 2.0 but never read, so an operator who set it got
+            // no normalisation and no indication of why.
+            if (! empty($config['country_code'])) {
+                $connector->setDefaultCountryCode($config['country_code']);
             }
 
             return $connector;

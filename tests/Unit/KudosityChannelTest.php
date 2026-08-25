@@ -363,9 +363,228 @@ describe('KudosityChannel', function () {
 
             expect($result)->toBe($smsData);
         });
+
+        it('carries the message ref and link tracking onto the V2 send', function () {
+            // The V2 path is the default path, so this is the only route by which
+            // a notification can attach a correlation key at all.
+            $notifiable = new class
+            {
+                public function routeNotificationFor($channel, $notification)
+                {
+                    return '61491570006';
+                }
+            };
+
+            $notification = new class extends Notification
+            {
+                public function toKudosity($notifiable)
+                {
+                    return (new KudosityMessage('Your order shipped: https://example.com/t/9931'))
+                        ->messageRef('order-9931:cust-4471')
+                        ->trackLinks();
+                }
+            };
+
+            $sent = SmsMessageData::fromArray([
+                'id' => '953b88be-5b6f-4b6d-8fcb-3436ec21c0be',
+                'recipient' => '61491570006',
+                'sender' => 'MyBrand',
+                'message' => 'Your order shipped: https://example.com/t/9931',
+                'message_ref' => 'order-9931:cust-4471',
+                'status' => 'queued',
+            ]);
+
+            $this->smsResource->shouldReceive('send')
+                ->once()
+                ->withArgs(fn (string $message, string $to, string $from, ?string $messageRef, bool $trackLinks) => $messageRef === 'order-9931:cust-4471' && $trackLinks === true)
+                ->andReturn($sent);
+
+            expect($this->channel->send($notifiable, $notification))->toBe($sent);
+        });
+
+        it('sends no ref and no link tracking when the message asked for neither', function () {
+            // Guards the defaults: trackLinks used to be derived from an unrelated
+            // V1 option, which turned a plain send into a tracked one.
+            $notifiable = new class
+            {
+                public function routeNotificationFor($channel, $notification)
+                {
+                    return '61491570006';
+                }
+            };
+
+            $notification = new class extends Notification
+            {
+                public function toKudosity($notifiable)
+                {
+                    return new KudosityMessage('Plain');
+                }
+            };
+
+            $sent = SmsMessageData::fromArray([
+                'id' => '953b88be-5b6f-4b6d-8fcb-3436ec21c0be',
+                'recipient' => '61491570006',
+                'sender' => 'MyBrand',
+                'message' => 'Plain',
+                'status' => 'queued',
+            ]);
+
+            $this->smsResource->shouldReceive('send')
+                ->once()
+                ->withArgs(fn (string $message, string $to, string $from, ?string $messageRef, bool $trackLinks) => $messageRef === null && $trackLinks === false)
+                ->andReturn($sent);
+
+            expect($this->channel->send($notifiable, $notification))->toBe($sent);
+        });
+
+        it('sends a tracked link URL over V1, where the [tracked-link] placeholder exists', function () {
+            // V1's tracked_link_url substitutes into the placeholder; V2 has no
+            // placeholder at all. Routing this to V2 sent the literal
+            // "[tracked-link]" to the handset and discarded the URL.
+            $notifiable = new class
+            {
+                public function routeNotificationFor($channel, $notification)
+                {
+                    return '61491570006';
+                }
+            };
+
+            $notification = new class extends Notification
+            {
+                public function toKudosity($notifiable)
+                {
+                    return (new KudosityMessage('Sale: [tracked-link]'))
+                        ->trackedLinkUrl('https://example.com/sale');
+                }
+            };
+
+            $smsData = new SmsData(
+                messageId: 444,
+                sendAt: '2026-08-25 10:00:00',
+                recipients: 1,
+                cost: 0.10,
+                sms: 1
+            );
+
+            $this->smsResource->shouldNotReceive('send');
+
+            $this->bulkResource->shouldReceive('sendRequest')
+                ->once()
+                ->withArgs(fn (SendSmsRequest $request) => ($request->body()->all()['tracked_link_url'] ?? null) === 'https://example.com/sale')
+                ->andReturn($smsData);
+
+            expect($this->channel->send($notifiable, $notification))->toBe($smsData);
+        });
+
+        it('honours countryCode() and formatNumbers() on the V2 route', function () {
+            // Both used to be dropped silently: they are absent from
+            // v1OnlyOptions(), so a message setting them routed to V2, which then
+            // ignored them and sent the local number raw. The API resolves the
+            // country itself in that case — against the ACCOUNT, not the country
+            // the caller explicitly named.
+            $notifiable = new class
+            {
+                public function routeNotificationFor($channel, $notification)
+                {
+                    return '0491570006';
+                }
+            };
+
+            $notification = new class extends Notification
+            {
+                public function toKudosity($notifiable)
+                {
+                    return (new KudosityMessage('Test'))
+                        ->countryCode('AU')
+                        ->formatNumbers();
+                }
+            };
+
+            $sent = SmsMessageData::fromArray([
+                'id' => '953b88be-5b6f-4b6d-8fcb-3436ec21c0be',
+                'recipient' => '61491570006',
+                'sender' => 'MyBrand',
+                'message' => 'Test',
+                'status' => 'queued',
+            ]);
+
+            $this->smsResource->shouldReceive('send')
+                ->once()
+                ->withArgs(fn (string $message, string $to) => $to === '61491570006')
+                ->andReturn($sent);
+
+            expect($this->channel->send($notifiable, $notification))->toBe($sent);
+        });
+
+        it('leaves the recipient alone on V2 when formatNumbers() was not asked for', function () {
+            // The SDK never normalises a local number uninvited: without a country
+            // it cannot know which one, and guessing sends a real message to the
+            // wrong person. The request strips punctuation; the zero stays.
+            $notifiable = new class
+            {
+                public function routeNotificationFor($channel, $notification)
+                {
+                    return '0491570006';
+                }
+            };
+
+            $notification = new class extends Notification
+            {
+                public function toKudosity($notifiable)
+                {
+                    return new KudosityMessage('Test');
+                }
+            };
+
+            $sent = SmsMessageData::fromArray([
+                'id' => '953b88be-5b6f-4b6d-8fcb-3436ec21c0be',
+                'recipient' => '0491570006',
+                'sender' => 'MyBrand',
+                'message' => 'Test',
+                'status' => 'queued',
+            ]);
+
+            $this->smsResource->shouldReceive('send')
+                ->once()
+                ->withArgs(fn (string $message, string $to) => $to === '0491570006')
+                ->andReturn($sent);
+
+            expect($this->channel->send($notifiable, $notification))->toBe($sent);
+        });
     });
 
     describe('error handling', function () {
+        it('reports an unparseable recipient as a KudosityException', function () {
+            // PhoneNumber throws InvalidArgumentException, which is not a
+            // ValidationException. Without a catch for it the channel leaks a raw
+            // SPL exception out of a notification, past every consumer catching
+            // KudosityException.
+            $notifiable = new class
+            {
+                public function routeNotificationFor($channel, $notification)
+                {
+                    return 'not a number';
+                }
+            };
+
+            $notification = new class extends Notification
+            {
+                public function toKudosity($notifiable)
+                {
+                    // Formatting is what asks the SDK to interpret the number, so
+                    // this is the path on which it can refuse.
+                    return (new KudosityMessage('Test'))
+                        ->countryCode('AU')
+                        ->formatNumbers();
+                }
+            };
+
+            $this->smsResource->shouldNotReceive('send');
+
+            expect(fn () => $this->channel->send($notifiable, $notification))
+                ->toThrow(KudosityException::class);
+        });
+
         it('wraps ValidationException in KudosityException', function () {
             $notifiable = new class
             {

@@ -33,6 +33,10 @@ class KudosityMessage
 
     protected ?string $trackedLinkUrl = null;
 
+    protected bool $trackLinks = false;
+
+    protected ?string $messageRef = null;
+
     protected ?string $dlrCallback = null;
 
     protected ?string $replyCallback = null;
@@ -192,11 +196,51 @@ class KudosityMessage
     }
 
     /**
-     * Set the URL to track link clicks.
+     * Set the URL to substitute into the message's `[tracked-link]` placeholder.
+     *
+     * **This routes the message to V1**, which is the only API that has the
+     * mechanism: `tracked_link_url` replaces a placeholder in the body. V2 has no
+     * placeholder — it shortens URLs already written into the message — so use
+     * {@see self::trackLinks()} and a real URL in the body for a V2 send.
      */
     public function trackedLinkUrl(string $trackedLinkUrl): self
     {
         $this->trackedLinkUrl = $trackedLinkUrl;
+
+        return $this;
+    }
+
+    /**
+     * Shorten and track the URLs already present in the message body.
+     *
+     * The V2 mechanism, and a boolean rather than a URL — there is nothing to
+     * substitute. **V2-only**: a message setting this and routing to V1 throws at
+     * {@see self::apiVersion()} rather than sending untracked.
+     */
+    public function trackLinks(bool $track = true): self
+    {
+        $this->trackLinks = $track;
+
+        return $this;
+    }
+
+    /**
+     * Set your own reference for this message, returned on every webhook it
+     * produces.
+     *
+     * This is the correlation key — how a delivery receipt or a reply ties back
+     * to an order, a booking or a conversation. Route on it, never on the phone
+     * number. Sign it with `Webhooks\SignedMessageRef` and V2's otherwise
+     * unauthenticated deliveries become provably about one of your own entities.
+     *
+     * **V2-only**: V1 has no `message_ref` field at all, so a message setting
+     * this and routing to V1 throws at {@see self::apiVersion()} rather than
+     * sending a message whose webhooks can never be correlated. Max 500
+     * characters, enforced by the request on the way out.
+     */
+    public function messageRef(string $messageRef): self
+    {
+        $this->messageRef = $messageRef;
 
         return $this;
     }
@@ -391,6 +435,22 @@ class KudosityMessage
     }
 
     /**
+     * Whether V2 link shortening is enabled.
+     */
+    public function getTrackLinks(): bool
+    {
+        return $this->trackLinks;
+    }
+
+    /**
+     * Get the correlation key.
+     */
+    public function getMessageRef(): ?string
+    {
+        return $this->messageRef;
+    }
+
+    /**
      * Get the delivery receipt callback URL.
      */
     public function getDlrCallback(): ?string
@@ -504,6 +564,11 @@ class KudosityMessage
             'sendAt()' => $this->sendAt !== null,
             'validity()' => $this->validity !== null,
             'repliesToEmail()' => $this->repliesToEmail !== null,
+            // Not merely a V1 preference: tracked_link_url substitutes a URL into
+            // a [tracked-link] placeholder, and V2 has no placeholder to
+            // substitute into. Sent over V2 the body reaches the handset with the
+            // literal "[tracked-link]" in it and the URL nowhere at all.
+            'trackedLinkUrl()' => $this->trackedLinkUrl !== null,
             'dlrCallback()' => $this->dlrCallback !== null,
             'replyCallback()' => $this->replyCallback !== null,
             'linkHitsCallback()' => $this->linkHitsCallback !== null,
@@ -515,6 +580,25 @@ class KudosityMessage
             'onReply()' => $this->replyHandler !== null,
             'onLinkHit()' => $this->linkHitHandler !== null,
             'multiple recipients in to()' => $this->hasMultipleRecipients(),
+        ];
+    }
+
+    /**
+     * The options V1 cannot express, mapped to the builder method that sets them.
+     *
+     * The mirror of {@see self::v1OnlyOptions()}, and the reason routing is not a
+     * one-way question. Neither of these has anywhere to land on a V1 request, so
+     * a message setting one and routing to V1 loses it silently — and losing a
+     * message_ref is the worst of the two, because the send succeeds and every
+     * webhook it goes on to produce is uncorrelatable for good.
+     *
+     * @return array<string, bool>
+     */
+    protected function v2OnlyOptions(): array
+    {
+        return [
+            'messageRef()' => $this->messageRef !== null,
+            'trackLinks()' => $this->trackLinks,
         ];
     }
 
@@ -538,7 +622,8 @@ class KudosityMessage
      * to call in a log line or a test without sending anything.
      *
      * @throws ValidationException If forceV2() was called on a message using a
-     *                             V1-only option
+     *                             V1-only option, or if a V2-only option is set
+     *                             on a message that routes to V1
      */
     public function apiVersion(): ApiVersion
     {
@@ -560,11 +645,56 @@ class KudosityMessage
             );
         }
 
-        if ($this->forcedVersion !== null) {
-            return $this->forcedVersion;
+        $version = $this->forcedVersion ?? ($reasons === [] ? ApiVersion::V2 : ApiVersion::V1);
+
+        if ($version === ApiVersion::V1) {
+            $this->assertNoV2OnlyOptions($reasons);
         }
 
-        return $reasons === [] ? ApiVersion::V2 : ApiVersion::V1;
+        return $version;
+    }
+
+    /**
+     * Refuse to send a V2-only option over V1.
+     *
+     * The same reasoning as the forceV2() throw above, pointing the other way. A
+     * dropped message_ref is not a wrong send — the message arrives, correctly —
+     * but every webhook it produces then carries no correlation key, and that is
+     * a silence rather than an error. Nobody discovers it until a reply cannot be
+     * routed.
+     *
+     * @param  array<int, string>  $reasons  What already forced V1, for the message.
+     *
+     * @throws ValidationException
+     */
+    protected function assertNoV2OnlyOptions(array $reasons): void
+    {
+        $v2Only = array_keys(array_filter($this->v2OnlyOptions()));
+
+        if ($v2Only === []) {
+            return;
+        }
+
+        // Every cause, not the first one found: with both a V1-only option and an
+        // explicit forceV1() in play, removing either on its own still routes to
+        // V1, and an error naming one of them sends the reader in a circle.
+        $causes = $reasons;
+
+        if ($this->forcedVersion === ApiVersion::V1) {
+            $causes[] = 'forceV1()';
+        }
+
+        throw new ValidationException(
+            message: sprintf(
+                '%s cannot be honoured: %s no V1 equivalent, and this message routes to V1 because of %s. '.
+                'Remove %s, or remove what forces V1 so the message can go over V2.',
+                implode(', ', $v2Only),
+                count($v2Only) === 1 ? 'it has' : 'they have',
+                implode(', ', $causes),
+                count($v2Only) === 1 ? 'it' : 'them',
+            ),
+            errorCode: 'FIELD_INVALID',
+        );
     }
 
     /**

@@ -72,6 +72,10 @@ it('routes to V1 for each option V2 cannot express', function (callable $configu
         fn (KudosityMessage $m) => $m->to('61491570006,61491570007'),
         'POST /v2/sms takes exactly one recipient',
     ],
+    'a tracked link URL' => [
+        fn (KudosityMessage $m) => $m->to('61491570006')->trackedLinkUrl('https://example.com/sale'),
+        'V1 substitutes the URL into a [tracked-link] placeholder; V2 has no placeholder to substitute into',
+    ],
 ]);
 
 it('routes the handler form to V1 as surely as the raw callback URL', function () {
@@ -122,6 +126,73 @@ it('names every reason when several V1-only options are set', function () {
 
 it('reports no reasons for a message that routes to V2', function () {
     expect((new KudosityMessage('Hi'))->to('61491570006')->v1Reasons())->toBe([]);
+});
+
+// ---------------------------------------------------------------------------
+// The options V1 cannot express — the mirror of the list above
+// ---------------------------------------------------------------------------
+
+it('carries a message_ref over V2, the only one of the two APIs that has one', function () {
+    // The correlation key. Without it a V2 send cannot be tied back to an order
+    // or a conversation, and SignedMessageRef has nothing to sign.
+    $message = (new KudosityMessage('Hi'))->to('61491570006')->messageRef('order-9931:cust-4471');
+
+    expect($message->apiVersion())->toBe(ApiVersion::V2)
+        ->and($message->getMessageRef())->toBe('order-9931:cust-4471');
+});
+
+it('throws rather than dropping a message_ref on a message routed to V1', function (callable $configure) {
+    // The same reasoning as the forceV2() throw, pointing the other way. V1 has
+    // no message_ref field, so sending anyway loses the key silently: the message
+    // arrives, and every webhook it produces is uncorrelatable forever after.
+    $configure((new KudosityMessage('Hi'))->to('61491570006')->messageRef('order-9931'))->apiVersion();
+})->with([
+    'a V1-only option' => [fn (KudosityMessage $m) => $m->sendAt('2026-09-01 09:00:00')],
+    'a callback handler' => [fn (KudosityMessage $m) => $m->onReply('App\\Handlers\\Reply')],
+    'an explicit forceV1()' => [fn (KudosityMessage $m) => $m->forceV1()],
+])->throws(ValidationException::class, 'messageRef()');
+
+it('names everything that forced V1 when a message_ref cannot travel', function () {
+    try {
+        (new KudosityMessage('Hi'))
+            ->to('61491570006')
+            ->messageRef('order-9931')
+            ->sendAt('2026-09-01 09:00:00')
+            ->forceV1()
+            ->apiVersion();
+    } catch (ValidationException $e) {
+        // Both causes, because removing only one of them still routes to V1.
+        expect($e->getMessage())->toContain('sendAt()')
+            ->and($e->getMessage())->toContain('forceV1()')
+            ->and($e->getErrorCode())->toBe('FIELD_INVALID');
+
+        return;
+    }
+
+    throw new RuntimeException('a message_ref was silently dropped on the V1 path');
+});
+
+it('throws rather than dropping trackLinks() on a message routed to V1', function () {
+    (new KudosityMessage('Hi'))->to('61491570006')->trackLinks()->forceV1()->apiVersion();
+})->throws(ValidationException::class, 'trackLinks()');
+
+it('refuses the two link-tracking options together, because they are not the same mechanism', function () {
+    // V1 substitutes tracked_link_url into a [tracked-link] placeholder. V2's
+    // track_links is a boolean that shortens URLs already in the body. A message
+    // setting both is asking for two different APIs at once.
+    (new KudosityMessage('Sale: [tracked-link]'))
+        ->to('61491570006')
+        ->trackedLinkUrl('https://example.com/sale')
+        ->trackLinks()
+        ->apiVersion();
+})->throws(ValidationException::class, 'trackLinks()');
+
+it('leaves a V2 message alone when neither V2-only option is set', function () {
+    $message = (new KudosityMessage('Hi'))->to('61491570006');
+
+    expect($message->apiVersion())->toBe(ApiVersion::V2)
+        ->and($message->getMessageRef())->toBeNull()
+        ->and($message->getTrackLinks())->toBeFalse();
 });
 
 // ---------------------------------------------------------------------------

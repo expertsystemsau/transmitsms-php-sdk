@@ -147,6 +147,28 @@ it('exposes a per-channel sender default and a country code', function () {
         ->and(config()->has('kudosity.rcs.agent_id'))->toBeTrue();
 });
 
+it('wires the configured country code into the V1 connector', function () {
+    // The key was published, documented, and read by nothing: the provider set
+    // setDefaultFrom() and never setDefaultCountryCode(), so
+    // bulk()->formatNumberLocal() fell back to "no country" and returned the
+    // number unformatted. A config key that silently does nothing is worse than
+    // an absent one — the operator believes normalisation is on.
+    config()->set('kudosity.country_code', 'AU');
+
+    app()->forgetInstance(KudosityV1Connector::class);
+
+    expect(app(KudosityV1Connector::class)->getDefaultCountryCode())->toBe('AU');
+});
+
+it('leaves the connector country null when none is configured', function () {
+    // Null is load-bearing: it is what makes the offline helpers refuse to guess.
+    config()->set('kudosity.country_code', null);
+
+    app()->forgetInstance(KudosityV1Connector::class);
+
+    expect(app(KudosityV1Connector::class)->getDefaultCountryCode())->toBeNull();
+});
+
 it('keeps every pre-existing config key', function () {
     // The split must not become a rewrite: a consumer's published config sets
     // these, and losing one silently changes behaviour.

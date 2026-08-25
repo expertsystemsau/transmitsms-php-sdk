@@ -95,6 +95,21 @@ describe('KudosityMessage', function () {
             expect($message->getTrackedLinkUrl())->toBe('https://example.com/track');
         });
 
+        it('sets the correlation key via messageRef() method', function () {
+            $message = (new KudosityMessage('Test'))
+                ->messageRef('order-9931:cust-4471');
+
+            expect($message->getMessageRef())->toBe('order-9931:cust-4471');
+        });
+
+        it('sets V2 link tracking via trackLinks() method', function () {
+            // A boolean, not a URL: V2 shortens the links already in the body.
+            $message = (new KudosityMessage('Test https://example.com'))->trackLinks();
+
+            expect($message->getTrackLinks())->toBeTrue()
+                ->and((new KudosityMessage('Test'))->trackLinks(false)->getTrackLinks())->toBeFalse();
+        });
+
         it('sets DLR callback via dlrCallback() method', function () {
             $message = (new KudosityMessage('Test'))
                 ->dlrCallback('https://example.com/dlr');
@@ -157,6 +172,8 @@ describe('KudosityMessage', function () {
             expect($message->dlrCallback('https://example.com/dlr'))->toBe($message);
             expect($message->replyCallback('https://example.com/reply'))->toBe($message);
             expect($message->linkHitsCallback('https://example.com/hits'))->toBe($message);
+            expect($message->messageRef('order-9931'))->toBe($message);
+            expect($message->trackLinks())->toBe($message);
         });
     });
 
