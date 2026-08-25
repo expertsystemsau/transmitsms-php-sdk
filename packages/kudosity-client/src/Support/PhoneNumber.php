@@ -27,19 +27,48 @@ final class PhoneNumber
     /**
      * Format a local phone number to E.164 international format.
      *
+     * **This refuses rather than improvises.** It used to return a non-nullable
+     * string whatever it was handed, which meant unparseable input came back as a
+     * plausible-looking number — `abc123` with a country of AU became `61123` —
+     * and the caller then read an API error naming a number they never wrote.
+     *
+     * It cannot tell a local number from an international one for a different
+     * country without a full national-numbering oracle, which is a dependency
+     * this package does not carry. What it can do is honour the one signal the
+     * caller gives it: a leading `+`.
+     *
      * @param  string  $number  The phone number (local or international)
      * @param  string|null  $countryCode  ISO 3166-1 alpha-2 code or country name
      * @return string The formatted number in E.164 format (without +)
      *
-     * @throws InvalidArgumentException If the country code is invalid
+     * @throws InvalidArgumentException If the country code is invalid, the input
+     *                                  carries no digits, or the formatted result
+     *                                  is not a valid international number
      */
     public static function toInternational(string $number, ?string $countryCode = null): string
     {
+        // Captured before cleanNumber() strips it. A leading + is the caller
+        // stating the number is already international, and it is the only thing
+        // separating "447911123456 is a UK mobile" from "447911123456 is a local
+        // number needing a prefix". Without it, a UK number on an account
+        // configured for AU became 61447911123456 — fourteen digits, which this
+        // class's own isValid() accepts. That is a wrong send, not a failed one.
+        $declaredInternational = str_starts_with(ltrim($number), '+');
+
         // Remove all non-digit characters except leading +
         $cleaned = self::cleanNumber($number);
 
-        // Need country code to convert local number
-        if ($countryCode === null) {
+        if ($cleaned === '') {
+            throw new InvalidArgumentException(
+                sprintf('Not a phone number: "%s" contains no digits', $number)
+            );
+        }
+
+        // Nothing to resolve against, or nothing to resolve. Both return the
+        // cleaned number unvalidated on purpose: a local number keeps its leading
+        // zero here, which SendWhatsAppRequest and SendRcsRequest rely on so the
+        // API rejects it loudly rather than the SDK guessing a country.
+        if ($countryCode === null || $declaredInternational) {
             return $cleaned;
         }
 
@@ -61,9 +90,23 @@ final class PhoneNumber
             // with this simple pattern, but we handle it explicitly for safety
             throw new InvalidArgumentException("Failed to process phone number: {$number}");
         }
-        $cleaned = $result;
 
-        return $dialingCode.$cleaned;
+        $formatted = $dialingCode.$result;
+
+        // An output check, deliberately not a national-format oracle. Everything
+        // this method builds must at least be a valid international number. A
+        // stricter rule — rejecting anything that is not a known national format —
+        // would turn away short codes and local shapes the API delivers happily,
+        // and a false rejection is a message that never goes out.
+        if (! self::isValid($formatted)) {
+            throw new InvalidArgumentException(sprintf(
+                'Not a phone number: "%s" formats to "%s", which is not a valid international number',
+                $number,
+                $formatted,
+            ));
+        }
+
+        return $formatted;
     }
 
     /**

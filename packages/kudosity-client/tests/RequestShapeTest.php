@@ -217,6 +217,54 @@ final class RequestShapeTest extends TestCase
         ], $body);
     }
 
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function punctuatedRecipients(): array
+    {
+        return [
+            'spaces and a plus' => ['+61 491 570 006', '61491570006'],
+            'brackets and dashes' => ['(04) 9157-0006', '0491570006'],
+            'a plus for another country' => ['+1 (415) 555-2671', '14155552671'],
+        ];
+    }
+
+    #[DataProvider('punctuatedRecipients')]
+    public function test_the_sms_recipient_is_normalised_the_way_whatsapp_and_rcs_already_normalise_theirs(string $given, string $expected): void
+    {
+        // A number pasted out of a CRM carries punctuation. SendWhatsAppRequest
+        // and SendRcsRequest have always stripped it; SMS and MMS sent it raw, so
+        // the same stored string behaved differently depending on which channel a
+        // notification happened to use.
+        $body = (new SendSmsV2Request('hi', $given, '61491570017'))->body()?->all();
+
+        $this->assertSame($expected, $body['recipient'] ?? null);
+    }
+
+    #[DataProvider('punctuatedRecipients')]
+    public function test_the_mms_recipient_is_normalised_the_same_way(string $given, string $expected): void
+    {
+        $body = (new SendMmsRequest($given, '61491570017', ['https://e.com/a.jpg']))->body()?->all();
+
+        $this->assertSame($expected, $body['recipient'] ?? null);
+    }
+
+    public function test_normalising_leaves_a_local_number_its_leading_zero(): void
+    {
+        // No country is assumed, so a local number keeps its zero and the API
+        // rejects it loudly. Guessing a country here would be a wrong send.
+        $body = (new SendSmsV2Request('hi', '0491570006', '61491570017'))->body()?->all();
+
+        $this->assertSame('0491570006', $body['recipient'] ?? null);
+    }
+
+    public function test_the_sms_recipient_must_contain_at_least_one_digit(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new SendSmsV2Request('hi', 'not a number', '61491570017');
+    }
+
     public function test_a_webhook_update_sends_the_whole_shape_because_put_is_a_replace(): void
     {
         // PUT /v2/webhook/{id} is a replace, not a patch. Sending a partial

@@ -101,6 +101,80 @@ final class PhoneNumberTest extends TestCase
     }
 
     // -----------------------------------------------------------------
+    // Refusing, rather than manufacturing, a number
+    // -----------------------------------------------------------------
+
+    public function test_a_leading_plus_means_already_international_and_is_never_re_prefixed(): void
+    {
+        // The `+` is the caller declaring the number is already international.
+        // cleanNumber() throws that signal away, and without it a UK mobile on an
+        // account configured for AU became 61447911123456 — 14 digits, which the
+        // SDK's own isValid() accepts. A well-formed number for the wrong country
+        // is the one failure here that can reach a real stranger.
+        $this->assertSame('447911123456', PhoneNumber::toInternational('+447911123456', 'AU'));
+        $this->assertSame('12125551234', PhoneNumber::toInternational('+1 (212) 555-1234', 'AU'));
+
+        // And the existing behaviour for a + on the configured country is unchanged.
+        $this->assertSame('61491570006', PhoneNumber::toInternational('+61 491 570 006', 'AU'));
+    }
+
+    public function test_it_refuses_input_carrying_no_digits_at_all(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        PhoneNumber::toInternational('not a number', 'AU');
+    }
+
+    public function test_it_refuses_input_carrying_no_digits_even_without_a_country(): void
+    {
+        // The WhatsApp and RCS requests call this with no country. Before, junk
+        // reached the API as {"recipient": ""}.
+        $this->expectException(InvalidArgumentException::class);
+
+        PhoneNumber::toInternational('hello');
+    }
+
+    public function test_it_refuses_to_return_a_number_its_own_validator_rejects(): void
+    {
+        // 'abc123' cleaned to '123' and came back as '61123'. Five digits is not a
+        // phone number, and the caller then got an API error naming a number they
+        // never supplied.
+        $this->expectException(InvalidArgumentException::class);
+
+        PhoneNumber::toInternational('abc123', 'AU');
+    }
+
+    public function test_it_names_the_input_it_was_given_when_refusing(): void
+    {
+        // The point of refusing rather than formatting: the error has to name what
+        // the caller passed, not the string this class built out of it.
+        try {
+            PhoneNumber::toInternational('abc123', 'AU');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString('abc123', $e->getMessage());
+
+            return;
+        }
+
+        $this->fail('toInternational() manufactured a number from unparseable input');
+    }
+
+    public function test_refusing_does_not_reject_numbers_the_api_would_have_delivered(): void
+    {
+        // The guard is output validity, not a national-format oracle: a false
+        // rejection is a message that never goes out. Every one of these is a
+        // shape the existing tests already pin, re-asserted here so a future
+        // tightening of the rule has to trip over them.
+        $this->assertSame('6596112234', PhoneNumber::toInternational('96112234', 'SG'));
+        $this->assertSame('12818691226', PhoneNumber::toInternational('2818691226', 'US'));
+        $this->assertSame('61491570006', PhoneNumber::toInternational('(04) 9157 0006', 'AU'));
+
+        // No country: the leading zero is deliberately left for the API to reject
+        // loudly, and that decision is unaffected by the new guards.
+        $this->assertSame('0491570006', PhoneNumber::toInternational('0491570006'));
+    }
+
+    // -----------------------------------------------------------------
     // formatMultiple
     // -----------------------------------------------------------------
 

@@ -8,6 +8,7 @@ use ExpertSystems\Kudosity\Concerns\GuardsMessageRef;
 use ExpertSystems\Kudosity\Data\V2\MmsMessageData;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use ExpertSystems\Kudosity\Requests\KudosityV2BodyRequest;
+use ExpertSystems\Kudosity\Support\PhoneNumber;
 use ExpertSystems\Kudosity\Support\Url;
 use Saloon\Http\Response;
 
@@ -111,6 +112,11 @@ class SendMmsRequest extends KudosityV2BodyRequest
         }
 
         self::guardMessageRef($messageRef);
+
+        // Punctuation goes, the same as the SMS, WhatsApp and RCS requests. No
+        // country is assumed — see SendSmsV2Request for why a leading zero is
+        // left for the API to reject rather than guessed at here.
+        $this->recipient = PhoneNumber::toInternational($recipient);
     }
 
     public function resolveEndpoint(): string

@@ -237,7 +237,7 @@ final class V2TransportTest extends TestCase
         $this->assertSame('61491570017', $body['sender']);
         $this->assertSame('order-1', $body['message_ref']);
         $this->assertTrue($body['track_links']);
-        $this->assertSame('/v2/sms', (new SendSmsV2Request('m', 'r', 's'))->resolveEndpoint());
+        $this->assertSame('/v2/sms', (new SendSmsV2Request('m', '61491570018', 's'))->resolveEndpoint());
     }
 
     public function test_a_read_request_carries_no_body(): void

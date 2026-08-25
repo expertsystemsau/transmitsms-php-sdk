@@ -8,6 +8,7 @@ use ExpertSystems\Kudosity\Concerns\GuardsMessageRef;
 use ExpertSystems\Kudosity\Data\V2\SmsMessageData;
 use ExpertSystems\Kudosity\Exceptions\ValidationException;
 use ExpertSystems\Kudosity\Requests\KudosityV2BodyRequest;
+use ExpertSystems\Kudosity\Support\PhoneNumber;
 use Saloon\Http\Response;
 
 /**
@@ -25,6 +26,7 @@ class SendSmsV2Request extends KudosityV2BodyRequest
 
     /**
      * @throws ValidationException If message_ref exceeds its documented maximum
+     * @throws \InvalidArgumentException If the recipient carries no digits
      */
     public function __construct(
         protected string $message,
@@ -34,6 +36,17 @@ class SendSmsV2Request extends KudosityV2BodyRequest
         protected bool $trackLinks = false,
     ) {
         self::guardMessageRef($messageRef);
+
+        // Punctuation goes, the same as SendWhatsAppRequest and SendRcsRequest
+        // have always done — a number pasted out of a CRM should not behave
+        // differently depending on which channel a notification happens to use.
+        //
+        // No country is passed, deliberately, and for the reason spelled out at
+        // length in SendWhatsAppRequest: a leading-zero local number cannot be
+        // resolved to E.164 without knowing the country, and defaulting one means
+        // prepending 61 to a number typed for somewhere else. The zero stays and
+        // the API rejects it loudly. Do not "fix" this into a country default.
+        $this->recipient = PhoneNumber::toInternational($recipient);
     }
 
     public function resolveEndpoint(): string
